@@ -2,9 +2,15 @@ name: test
 description: runs all tests
 inputs:
   githubAccessToken:
-    description: accessToken for cloning github.com/opctl/test-suite-auth repo
+    description: accessToken for cloning the private auth test op repo
     string:
       isSecret: true
+      constraints:
+        minLength: 1
+  githubAuthTestOpRef:
+    description: private op ref used by auth test scenarios
+    string:
+      default: github.com/soultech67/test-suite-auth#1.0.0
       constraints:
         minLength: 1
   goBuildCachePath:
@@ -30,6 +36,7 @@ run:
             ref: $(../../cli/.opspec/test/e2e)
             inputs:
               githubAccessToken:
+              githubAuthTestOpRef:
     # opspec tests
     - op:
         ref: $(../../opspec/opfile/.opspec/test)

@@ -17,9 +17,12 @@ fi
 exec <&-
 
 opRef="${opRef:-/test}"
+if [[ "$opRef" == "__githubAuthTestOpRef__" ]]; then
+  opRef="$githubAuthTestOpRef"
+fi
 
 echo "op: $op"
-blah=$(opctl run --no-progress --arg-file /args.yml $opRef)
+blah=$(opctl run --no-progress --arg-file /args.yml "$opRef")
 
 case "$expect" in
   success)
