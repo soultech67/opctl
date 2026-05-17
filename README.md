@@ -6,9 +6,9 @@ We encourage you to support Ukraine any way you can.
 🇺🇦 We stand with Ukraine 🇺🇦
 
 # Badges
-[![Build](https://github.com/opctl/opctl/workflows/Build/badge.svg?branch=main)](https://github.com/opctl/opctl/actions?query=workflow%3ABuild+branch%3Amain)
-[![Go Report Card](https://goreportcard.com/badge/github.com/opctl/opctl)](https://goreportcard.com/report/github.com/opctl/opctl)
-[![Coverage](https://codecov.io/gh/opctl/opctl/branch/master/graph/badge.svg)](https://codecov.io/gh/opctl/opctl)
+[![Build](https://github.com/soultech67/opctl/workflows/Build/badge.svg?branch=main)](https://github.com/soultech67/opctl/actions?query=workflow%3ABuild+branch%3Amain)
+[![Go Report Card](https://goreportcard.com/badge/github.com/soultech67/opctl)](https://goreportcard.com/report/github.com/soultech67/opctl)
+[![Coverage](https://codecov.io/gh/soultech67/opctl/branch/main/graph/badge.svg)](https://codecov.io/gh/soultech67/opctl)
 
 > *Be advised: this project is currently at Major version zero. Per the
 > semantic versioning spec: "Major version zero (0.y.z) is for initial
@@ -33,7 +33,7 @@ These awesome companies use opctl. represent by adding yours (or one you know of
 
 join us on
 [![Slack](https://img.shields.io/badge/slack-opctl-E01563.svg)](https://join.slack.com/t/opctl/shared_invite/zt-51zodvjn-Ul_UXfkhqYLWZPQTvNPp5w)
-or [open an issue](https://github.com/opctl/opctl/issues)
+or [open an issue](https://github.com/soultech67/opctl/issues)
 
 # Releases
 
@@ -45,5 +45,4 @@ and [tagged](https://git-scm.com/book/en/v2/Git-Basics-Tagging); see
 # Contributing
 
 see [CONTRIBUTING.md](CONTRIBUTING.md)
-
 

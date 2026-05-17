@@ -51,3 +51,5 @@ webapp or website changes.
 Do not commit secrets. Pass sensitive values through op inputs such as
 `githubAccessToken`. Local Go development requires Go from `go.mod`; macOS
 contributors may also need `gpgme` via `brew install gpgme`.
+
+@RTK.md

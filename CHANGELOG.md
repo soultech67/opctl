@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file in
 accordance with
 [![keepachangelog 1.0.0](https://img.shields.io/badge/keepachangelog-1.0.0-brightgreen.svg)](http://keepachangelog.com/en/1.0.0/)
 
+## [0.1.77] - 2026-05-17
+
+### Added
+
+- Added RTK command guidance for Codex and Claude workflows, including token-optimized command examples and verification steps
+- Added project-local RTK filter configuration for future command-output compaction
+- Added project memory guidance requiring workbranch changes to maintain the next patch-version `CHANGELOG.md` entry
+
+### Changed
+
+- Contributor guidance now links to the RTK command instructions from `AGENTS.md`
+
 ## [0.1.76] - 2026-05-17
 
 ### Added

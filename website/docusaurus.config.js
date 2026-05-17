@@ -4,7 +4,7 @@ module.exports = {
   url: 'https://opctl.io',
   baseUrl: '/',
   favicon: 'img/favicon.ico',
-  organizationName: 'opctl', // Usually your GitHub org/user name.
+  organizationName: 'soultech67', // Usually your GitHub org/user name.
   projectName: 'opctl', // Usually your repo name.
   trailingSlash: false,
   themeConfig: {
@@ -35,7 +35,7 @@ module.exports = {
           position: 'right',
         },
         {
-          href: 'https://github.com/opctl/opctl',
+          href: 'https://github.com/soultech67/opctl',
           label: 'GitHub',
           position: 'right',
         },
@@ -67,7 +67,7 @@ module.exports = {
           items: [
             {
               label: 'Github',
-              href: 'https://github.com/opctl/opctl'
+              href: 'https://github.com/soultech67/opctl'
             }
           ]
         }
@@ -80,7 +80,7 @@ module.exports = {
       '@docusaurus/preset-classic',
       {
         docs: {
-          editUrl: "https://github.com/opctl/opctl/edit/main/website/",
+          editUrl: "https://github.com/soultech67/opctl/edit/main/website/",
           sidebarPath: require.resolve('./sidebars.js'),
           // Equivalent to `enableUpdateBy`.
           showLastUpdateAuthor: true,

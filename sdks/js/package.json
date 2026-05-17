@@ -18,14 +18,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/opctl/opctl.git"
+    "url": "git+https://github.com/soultech67/opctl.git"
   },
   "keywords": [
     "opctl"
   ],
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/opctl/opctl/issues"
+    "url": "https://github.com/soultech67/opctl/issues"
   },
   "main": "lib",
   "standard": {

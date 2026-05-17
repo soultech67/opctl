@@ -23,7 +23,7 @@ module.exports = {
         {
           type: "link",
           label: "ReST API",
-          href: "https://petstore.swagger.io/?url=https://raw.githubusercontent.com/opctl/opctl/main/api/openapi.yaml"
+          href: "https://petstore.swagger.io/?url=https://raw.githubusercontent.com/soultech67/opctl/main/api/openapi.yaml"
         },
         {
           type: "category",
@@ -32,12 +32,12 @@ module.exports = {
             {
               type: "link",
               label: "Go",
-              href: "https://github.com/opctl/opctl/tree/main/sdks/go"
+              href: "https://github.com/soultech67/opctl/tree/main/sdks/go"
             },
             {
               type: "link",
               label: "Js",
-              href: "https://github.com/opctl/opctl/tree/main/sdks/js"
+              href: "https://github.com/soultech67/opctl/tree/main/sdks/js"
             }
           ]
         }
