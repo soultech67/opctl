@@ -2,11 +2,11 @@
 OpenAPI spec for the [opctl](https://opctl.io) ReST API.
 
 # Browsing
-[open in swagger editor](https://editor.swagger.io/?url=https://raw.githubusercontent.com/opctl/opctl/main/api/openapi.yaml)
+[open in swagger editor](https://editor.swagger.io/?url=https://raw.githubusercontent.com/soultech67/opctl/main/api/openapi.yaml)
 
-[open in swagger ui](https://petstore.swagger.io/?url=https://raw.githubusercontent.com/opctl/opctl/main/api/openapi.yaml)
+[open in swagger ui](https://petstore.swagger.io/?url=https://raw.githubusercontent.com/soultech67/opctl/main/api/openapi.yaml)
 
 # Support
 join us on
 [![Slack](https://img.shields.io/badge/slack-opctl-E01563.svg)](https://join.slack.com/t/opctl/shared_invite/zt-51zodvjn-Ul_UXfkhqYLWZPQTvNPp5w)
-or [open an issue](https://github.com/opctl/opctl/issues)
+or [open an issue](https://github.com/soultech67/opctl/issues)

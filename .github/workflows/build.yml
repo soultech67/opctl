@@ -1,9 +1,7 @@
 name: Build
 
 env:
-  # TODO: switch this to soultech67/opctl after the fork has its first release
-  # with opctl-linux-amd64.tgz available for CI bootstrap.
-  OPCTL_BOOTSTRAP_RELEASE_REPO: opctl/opctl
+  OPCTL_BOOTSTRAP_RELEASE_REPO: soultech67/opctl
 
 on:
   push:
