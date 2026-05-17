@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: opctl GitHub repo
-    url: https://github.com/opctl/opctl/issues
+    url: https://github.com/soultech67/opctl/issues
     about: Please report issues here.
-  - name: opctl Slack channel
-    url: https://join.slack.com/t/opctl/shared_invite/zt-51zodvjn-Ul_UXfkhqYLWZPQTvNPp5w
-    about: Please join our Slack channel for questions/proposals.
+#  - name: opctl Slack channel
+#    url: https://join.slack.com/t/opctl/shared_invite/zt-51zodvjn-Ul_UXfkhqYLWZPQTvNPp5w
+#    about: Please join our Slack channel for questions/proposals.

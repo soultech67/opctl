@@ -7,10 +7,20 @@ package containerruntime
 import (
 	"context"
 	"io"
+	"time"
 
 	"github.com/opctl/opctl/sdks/go/model"
 	"github.com/opctl/opctl/sdks/go/node/pubsub"
 )
+
+// Container identifies an opctl-managed container known to a container runtime.
+type Container struct {
+	ID        string
+	Name      string
+	Image     string
+	StartedAt time.Time
+	Labels    map[string]string
+}
 
 // ContainerRuntime defines the interface container runtimes must implement to be supported by opctl
 //
@@ -25,6 +35,21 @@ type ContainerRuntime interface {
 		ctx context.Context,
 		containerID string,
 	) error
+
+	DeleteContainer(
+		ctx context.Context,
+		containerIDOrName string,
+	) error
+
+	DeleteContainersByLabels(
+		ctx context.Context,
+		labels []string,
+	) error
+
+	ListContainersByLabels(
+		ctx context.Context,
+		labels []string,
+	) ([]Container, error)
 
 	// Kill stops/kills opctl managed resources within the container runtime
 	Kill(

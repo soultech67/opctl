@@ -29,7 +29,7 @@ func newSelfUpdateCmd(
 			}
 
 			v := semver.MustParse(version)
-			latest, err := selfupdate.UpdateSelf(v, "opctl/opctl")
+			latest, err := selfupdate.UpdateSelf(v, selfUpdateRepo)
 			if err != nil {
 				return err
 			}

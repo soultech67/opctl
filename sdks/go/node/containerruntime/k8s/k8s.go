@@ -63,6 +63,27 @@ func (cr _containerRuntime) DeleteContainerIfExists(
 	return nil
 }
 
+func (cr _containerRuntime) DeleteContainer(
+	ctx context.Context,
+	containerIDOrName string,
+) error {
+	return fmt.Errorf("delete container is not supported for k8s container runtime")
+}
+
+func (cr _containerRuntime) DeleteContainersByLabels(
+	ctx context.Context,
+	labels []string,
+) error {
+	return fmt.Errorf("delete containers by labels is not supported for k8s container runtime")
+}
+
+func (cr _containerRuntime) ListContainersByLabels(
+	ctx context.Context,
+	labels []string,
+) ([]containerruntime.Container, error) {
+	return nil, fmt.Errorf("list containers by labels is not supported for k8s container runtime")
+}
+
 func (cr _containerRuntime) Kill(
 	ctx context.Context,
 ) error {

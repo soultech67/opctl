@@ -1,6 +1,6 @@
 apk add --update docker
 
-error=$(docker pull ghcr.io/opctl/opctl:${version}-dind 2>&1 1>/dev/null)
+error=$(docker pull ghcr.io/soultech67/opctl:${version}-dind 2>&1 1>/dev/null)
 
 # only continue with release if tag doesn't exist
 if [[ -z $error ]]; then

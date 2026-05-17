@@ -2,7 +2,6 @@ package docker
 
 import (
 	"context"
-	"fmt"
 	"runtime"
 
 	"github.com/docker/docker/api/types/container"
@@ -29,7 +28,7 @@ func isGpuSupported(
 		return false, nil
 	}
 
-	containerName := getContainerName(fmt.Sprintf("gpu-check-%s", uuid.NewV4().String()))
+	containerName := getContainerName(uuid.NewV4().String(), "gpu-check")
 
 	defer dockerClient.ContainerRemove(
 		context.Background(),

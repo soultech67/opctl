@@ -20,11 +20,12 @@ import (
 )
 
 var (
-	cliColorer = clicolorer.New()
-	cliOutput  = clioutput.New(cliColorer, os.Stderr, os.Stdout)
-	nodeConfig local.NodeConfig
-	noColor    bool
-	version    string // set via -ldflags=-X=github.com/opctl/opctl/cli/cmd.version=$(version)
+	cliColorer     = clicolorer.New()
+	cliOutput      = clioutput.New(cliColorer, os.Stderr, os.Stdout)
+	nodeConfig     local.NodeConfig
+	noColor        bool
+	version        string          // set via -ldflags=-X=github.com/opctl/opctl/cli/cmd.version=$(version)
+	selfUpdateRepo = "opctl/opctl" // set via -ldflags=-X=github.com/opctl/opctl/cli/cmd.selfUpdateRepo=$(selfUpdateRepo)
 )
 
 func printUsageSection(
@@ -254,6 +255,11 @@ func NewRootCmd() (*cobra.Command, error) {
 	rootCmd.AddCommand(
 		newEventsCmd(
 			cliOutput,
+			&nodeConfig,
+		),
+	)
+	rootCmd.AddCommand(
+		node.NewContainerCmd(
 			&nodeConfig,
 		),
 	)

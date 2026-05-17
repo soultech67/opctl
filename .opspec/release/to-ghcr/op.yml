@@ -1,5 +1,5 @@
 name: to-ghcr
-description: releases opctl to [Github Container Registry](https://ghcr.io/opctl/opctl/)
+description: releases opctl to [Github Container Registry](https://ghcr.io/soultech67/opctl/)
 inputs:
   encodedGithubAuth:
     string:
@@ -30,7 +30,7 @@ run:
             --local dockerfile=/
             --progress plain
             --opt platform=linux/amd64,linux/arm64
-            --output type=image,name=ghcr.io/opctl/opctl:$(version)-$(imageVariant),push=true
+            --output type=image,name=ghcr.io/soultech67/opctl:$(version)-$(imageVariant),push=true
         dirs:
           /buildCtx:
             /entrypoint.sh:

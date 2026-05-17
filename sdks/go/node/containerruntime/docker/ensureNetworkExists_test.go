@@ -20,8 +20,9 @@ var _ = Context("ensureNetworkExists", func() {
 			expectedContainerID := providedContainerID
 			expectedNetworkCreations := network.CreateOptions{
 				Attachable: true,
-				Options:    map[string]string{},
+				Options:    expectedNetworkCreateOptions(),
 			}
+			configureNetworkInspect(fakeDockerClient)
 
 			/* act */
 			ensureNetworkExists(
@@ -64,6 +65,7 @@ var _ = Context("ensureNetworkExists", func() {
 			It("shouldn't error", func() {
 				/* arrange */
 				fakeDockerClient := new(FakeCommonAPIClient)
+				configureNetworkInspect(fakeDockerClient)
 
 				/* act */
 				actualError := ensureNetworkExists(

@@ -35,6 +35,44 @@ type FakeContainerRuntime struct {
 	deleteContainerIfExistsReturnsOnCall map[int]struct {
 		result1 error
 	}
+	DeleteContainerStub        func(context.Context, string) error
+	deleteContainerMutex       sync.RWMutex
+	deleteContainerArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+	}
+	deleteContainerReturns struct {
+		result1 error
+	}
+	deleteContainerReturnsOnCall map[int]struct {
+		result1 error
+	}
+	DeleteContainersByLabelsStub        func(context.Context, []string) error
+	deleteContainersByLabelsMutex       sync.RWMutex
+	deleteContainersByLabelsArgsForCall []struct {
+		arg1 context.Context
+		arg2 []string
+	}
+	deleteContainersByLabelsReturns struct {
+		result1 error
+	}
+	deleteContainersByLabelsReturnsOnCall map[int]struct {
+		result1 error
+	}
+	ListContainersByLabelsStub        func(context.Context, []string) ([]containerruntime.Container, error)
+	listContainersByLabelsMutex       sync.RWMutex
+	listContainersByLabelsArgsForCall []struct {
+		arg1 context.Context
+		arg2 []string
+	}
+	listContainersByLabelsReturns struct {
+		result1 []containerruntime.Container
+		result2 error
+	}
+	listContainersByLabelsReturnsOnCall map[int]struct {
+		result1 []containerruntime.Container
+		result2 error
+	}
 	KillStub        func(context.Context) error
 	killMutex       sync.RWMutex
 	killArgsForCall []struct {
@@ -189,6 +227,192 @@ func (fake *FakeContainerRuntime) DeleteContainerIfExistsReturnsOnCall(i int, re
 	}{result1}
 }
 
+func (fake *FakeContainerRuntime) DeleteContainer(arg1 context.Context, arg2 string) error {
+	fake.deleteContainerMutex.Lock()
+	ret, specificReturn := fake.deleteContainerReturnsOnCall[len(fake.deleteContainerArgsForCall)]
+	fake.deleteContainerArgsForCall = append(fake.deleteContainerArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+	}{arg1, arg2})
+	fake.recordInvocation("DeleteContainer", []interface{}{arg1, arg2})
+	fake.deleteContainerMutex.Unlock()
+	if fake.DeleteContainerStub != nil {
+		return fake.DeleteContainerStub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.deleteContainerReturns
+	return fakeReturns.result1
+}
+
+func (fake *FakeContainerRuntime) DeleteContainerCallCount() int {
+	fake.deleteContainerMutex.RLock()
+	defer fake.deleteContainerMutex.RUnlock()
+	return len(fake.deleteContainerArgsForCall)
+}
+
+func (fake *FakeContainerRuntime) DeleteContainerCalls(stub func(context.Context, string) error) {
+	fake.deleteContainerMutex.Lock()
+	defer fake.deleteContainerMutex.Unlock()
+	fake.DeleteContainerStub = stub
+}
+
+func (fake *FakeContainerRuntime) DeleteContainerArgsForCall(i int) (context.Context, string) {
+	fake.deleteContainerMutex.RLock()
+	defer fake.deleteContainerMutex.RUnlock()
+	argsForCall := fake.deleteContainerArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *FakeContainerRuntime) DeleteContainerReturns(result1 error) {
+	fake.deleteContainerMutex.Lock()
+	defer fake.deleteContainerMutex.Unlock()
+	fake.DeleteContainerStub = nil
+	fake.deleteContainerReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeContainerRuntime) DeleteContainerReturnsOnCall(i int, result1 error) {
+	fake.deleteContainerMutex.Lock()
+	defer fake.deleteContainerMutex.Unlock()
+	fake.DeleteContainerStub = nil
+	if fake.deleteContainerReturnsOnCall == nil {
+		fake.deleteContainerReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.deleteContainerReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeContainerRuntime) DeleteContainersByLabels(arg1 context.Context, arg2 []string) error {
+	fake.deleteContainersByLabelsMutex.Lock()
+	ret, specificReturn := fake.deleteContainersByLabelsReturnsOnCall[len(fake.deleteContainersByLabelsArgsForCall)]
+	fake.deleteContainersByLabelsArgsForCall = append(fake.deleteContainersByLabelsArgsForCall, struct {
+		arg1 context.Context
+		arg2 []string
+	}{arg1, arg2})
+	fake.recordInvocation("DeleteContainersByLabels", []interface{}{arg1, arg2})
+	fake.deleteContainersByLabelsMutex.Unlock()
+	if fake.DeleteContainersByLabelsStub != nil {
+		return fake.DeleteContainersByLabelsStub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.deleteContainersByLabelsReturns
+	return fakeReturns.result1
+}
+
+func (fake *FakeContainerRuntime) DeleteContainersByLabelsCallCount() int {
+	fake.deleteContainersByLabelsMutex.RLock()
+	defer fake.deleteContainersByLabelsMutex.RUnlock()
+	return len(fake.deleteContainersByLabelsArgsForCall)
+}
+
+func (fake *FakeContainerRuntime) DeleteContainersByLabelsCalls(stub func(context.Context, []string) error) {
+	fake.deleteContainersByLabelsMutex.Lock()
+	defer fake.deleteContainersByLabelsMutex.Unlock()
+	fake.DeleteContainersByLabelsStub = stub
+}
+
+func (fake *FakeContainerRuntime) DeleteContainersByLabelsArgsForCall(i int) (context.Context, []string) {
+	fake.deleteContainersByLabelsMutex.RLock()
+	defer fake.deleteContainersByLabelsMutex.RUnlock()
+	argsForCall := fake.deleteContainersByLabelsArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *FakeContainerRuntime) DeleteContainersByLabelsReturns(result1 error) {
+	fake.deleteContainersByLabelsMutex.Lock()
+	defer fake.deleteContainersByLabelsMutex.Unlock()
+	fake.DeleteContainersByLabelsStub = nil
+	fake.deleteContainersByLabelsReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeContainerRuntime) DeleteContainersByLabelsReturnsOnCall(i int, result1 error) {
+	fake.deleteContainersByLabelsMutex.Lock()
+	defer fake.deleteContainersByLabelsMutex.Unlock()
+	fake.DeleteContainersByLabelsStub = nil
+	if fake.deleteContainersByLabelsReturnsOnCall == nil {
+		fake.deleteContainersByLabelsReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.deleteContainersByLabelsReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeContainerRuntime) ListContainersByLabels(arg1 context.Context, arg2 []string) ([]containerruntime.Container, error) {
+	fake.listContainersByLabelsMutex.Lock()
+	ret, specificReturn := fake.listContainersByLabelsReturnsOnCall[len(fake.listContainersByLabelsArgsForCall)]
+	fake.listContainersByLabelsArgsForCall = append(fake.listContainersByLabelsArgsForCall, struct {
+		arg1 context.Context
+		arg2 []string
+	}{arg1, arg2})
+	fake.recordInvocation("ListContainersByLabels", []interface{}{arg1, arg2})
+	fake.listContainersByLabelsMutex.Unlock()
+	if fake.ListContainersByLabelsStub != nil {
+		return fake.ListContainersByLabelsStub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.listContainersByLabelsReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeContainerRuntime) ListContainersByLabelsCallCount() int {
+	fake.listContainersByLabelsMutex.RLock()
+	defer fake.listContainersByLabelsMutex.RUnlock()
+	return len(fake.listContainersByLabelsArgsForCall)
+}
+
+func (fake *FakeContainerRuntime) ListContainersByLabelsCalls(stub func(context.Context, []string) ([]containerruntime.Container, error)) {
+	fake.listContainersByLabelsMutex.Lock()
+	defer fake.listContainersByLabelsMutex.Unlock()
+	fake.ListContainersByLabelsStub = stub
+}
+
+func (fake *FakeContainerRuntime) ListContainersByLabelsArgsForCall(i int) (context.Context, []string) {
+	fake.listContainersByLabelsMutex.RLock()
+	defer fake.listContainersByLabelsMutex.RUnlock()
+	argsForCall := fake.listContainersByLabelsArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *FakeContainerRuntime) ListContainersByLabelsReturns(result1 []containerruntime.Container, result2 error) {
+	fake.listContainersByLabelsMutex.Lock()
+	defer fake.listContainersByLabelsMutex.Unlock()
+	fake.ListContainersByLabelsStub = nil
+	fake.listContainersByLabelsReturns = struct {
+		result1 []containerruntime.Container
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeContainerRuntime) ListContainersByLabelsReturnsOnCall(i int, result1 []containerruntime.Container, result2 error) {
+	fake.listContainersByLabelsMutex.Lock()
+	defer fake.listContainersByLabelsMutex.Unlock()
+	fake.ListContainersByLabelsStub = nil
+	if fake.listContainersByLabelsReturnsOnCall == nil {
+		fake.listContainersByLabelsReturnsOnCall = make(map[int]struct {
+			result1 []containerruntime.Container
+			result2 error
+		})
+	}
+	fake.listContainersByLabelsReturnsOnCall[i] = struct {
+		result1 []containerruntime.Container
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *FakeContainerRuntime) Kill(arg1 context.Context) error {
 	fake.killMutex.Lock()
 	ret, specificReturn := fake.killReturnsOnCall[len(fake.killArgsForCall)]
@@ -324,6 +548,12 @@ func (fake *FakeContainerRuntime) Invocations() map[string][][]interface{} {
 	defer fake.deleteMutex.RUnlock()
 	fake.deleteContainerIfExistsMutex.RLock()
 	defer fake.deleteContainerIfExistsMutex.RUnlock()
+	fake.deleteContainerMutex.RLock()
+	defer fake.deleteContainerMutex.RUnlock()
+	fake.deleteContainersByLabelsMutex.RLock()
+	defer fake.deleteContainersByLabelsMutex.RUnlock()
+	fake.listContainersByLabelsMutex.RLock()
+	defer fake.listContainersByLabelsMutex.RUnlock()
 	fake.killMutex.RLock()
 	defer fake.killMutex.RUnlock()
 	fake.runContainerMutex.RLock()

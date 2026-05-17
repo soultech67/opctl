@@ -1,5 +1,5 @@
 name: to-github
-description: releases opctl to [github](https://github.com/opctl/opctl/)
+description: releases opctl to [github](https://github.com/soultech67/opctl/)
 inputs:
   githubAccessToken:
     description: Access token for interacting w/ github
@@ -30,7 +30,7 @@ run:
           commitish: $(commit)
           description: $(latestRelease.description)
           accessToken: $(githubAccessToken)
-          owner: opctl
+          owner: soultech67
           repo: opctl
           tag: v$(latestRelease.version)
           name: v$(latestRelease.version)
@@ -64,5 +64,5 @@ run:
                   id: $(githubRelease.id)
                   accessToken: $(githubAccessToken)
                   name: opctl-$(target).tgz
-                  owner: opctl
+                  owner: soultech67
                   repo: opctl

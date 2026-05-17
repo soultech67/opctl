@@ -28,12 +28,16 @@ var _ = Context("constructContainerConfig", func() {
 			"6060/udp": []nat.PortBinding{},
 		}
 		providedWorkDir := "dummyWorkDir"
+		providedLabels := map[string]string{
+			"label1Name": "label1Value",
+		}
 
 		expectedResult := &container.Config{
 			Entrypoint:   providedCmd,
 			Env:          []string{},
 			ExposedPorts: nat.PortSet{},
 			Image:        providedImageRef,
+			Labels:       providedLabels,
 			WorkingDir:   providedWorkDir,
 			Tty:          true,
 		}
@@ -53,6 +57,7 @@ var _ = Context("constructContainerConfig", func() {
 			providedImageRef,
 			providedPortBindings,
 			providedWorkDir,
+			providedLabels,
 		)
 
 		/* assert */

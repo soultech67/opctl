@@ -3,9 +3,9 @@ package docker
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"os"
+	"runtime"
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/docker/docker/api/types"
@@ -56,6 +56,7 @@ var _ = Context("RunContainer", func() {
 		}
 
 		fakeDockerClient := new(FakeCommonAPIClient)
+		configureNetworkInspect(fakeDockerClient)
 		fakeDockerClient.ContainerWaitReturns(closedContainerWaitOkBodyChan, nil)
 
 		objectUnderTest := _runContainer{
@@ -76,10 +77,10 @@ var _ = Context("RunContainer", func() {
 
 		/* assert */
 		_, actualContainerName, _ := fakeDockerClient.ContainerStopArgsForCall(0)
-		Expect(actualContainerName).To(Equal(fmt.Sprintf("opctl_%s", providedReq.ContainerID)))
+		Expect(actualContainerName).To(Equal(getContainerNameForCall(providedReq)))
 
 		_, actualContainerName, actualContainerRemoveOptions := fakeDockerClient.ContainerRemoveArgsForCall(0)
-		Expect(actualContainerName).To(Equal(fmt.Sprintf("opctl_%s", providedReq.ContainerID)))
+		Expect(actualContainerName).To(Equal(getContainerNameForCall(providedReq)))
 		Expect(actualContainerRemoveOptions).To(Equal(expectedContainerRemoveOptions))
 
 	})
@@ -87,10 +88,13 @@ var _ = Context("RunContainer", func() {
 		It("should return expected result", func() {
 			/* arrange */
 
+			fakeDockerClient := new(FakeCommonAPIClient)
+			configureNetworkInspect(fakeDockerClient)
+
 			objectUnderTest := _runContainer{
 				containerStdErrStreamer: new(FakeContainerLogStreamer),
 				containerStdOutStreamer: new(FakeContainerLogStreamer),
-				dockerClient:            new(FakeCommonAPIClient),
+				dockerClient:            fakeDockerClient,
 			}
 
 			/* act */
@@ -128,6 +132,7 @@ var _ = Context("RunContainer", func() {
 			expectedImagePullOptions := image.PullOptions{Platform: "linux"}
 
 			_fakeDockerClient := new(FakeCommonAPIClient)
+			configureNetworkInspect(_fakeDockerClient)
 			_fakeDockerClient.ContainerWaitReturns(closedContainerWaitOkBodyChan, nil)
 			_fakeDockerClient.ContainerInspectReturns(types.ContainerJSON{NetworkSettings: &types.NetworkSettings{}}, nil)
 			_fakeDockerClient.ImagePullReturns(io.NopCloser(bytes.NewBufferString("")), nil)
@@ -158,6 +163,7 @@ var _ = Context("RunContainer", func() {
 		It("should call dockerClient.ContainerCreate w/ expected args", func() {
 			/* arrange */
 			providedCtx := context.Background()
+			providedContainerName := "providedContainerName"
 			providedReq := &model.ContainerCall{
 				BaseCall:    model.BaseCall{},
 				ContainerID: "dummyContainerID",
@@ -168,7 +174,7 @@ var _ = Context("RunContainer", func() {
 					"file1ContainerPath": "file1HostPath",
 				},
 				Image: &model.ContainerCallImage{Ref: new(string)},
-				Name:  new(string),
+				Name:  &providedContainerName,
 				Sockets: map[string]string{
 					"/unixSocket1ContainerAddress": "/unixSocket1HostAddress",
 				},
@@ -188,7 +194,18 @@ var _ = Context("RunContainer", func() {
 				*providedReq.Image.Ref,
 				expectedPortBindings,
 				providedReq.WorkDir,
+				getContainerLabelsForCall(providedReq),
 			)
+
+			expectedResources := container.Resources{}
+			if runtime.GOOS == "linux" {
+				expectedResources.DeviceRequests = []container.DeviceRequest{
+					{
+						Capabilities: [][]string{{"gpu"}},
+						Count:        -1,
+					},
+				}
+			}
 
 			expectedHostConfig := &container.HostConfig{
 				Mounts: []mount.Mount{
@@ -231,14 +248,7 @@ var _ = Context("RunContainer", func() {
 					},
 				},
 				Privileged: true,
-				Resources: container.Resources{
-					DeviceRequests: []container.DeviceRequest{
-						{
-							Capabilities: [][]string{{"gpu"}},
-							Count:        -1,
-						},
-					},
-				},
+				Resources:  expectedResources,
 			}
 
 			expectedNetworkingConfig := &network.NetworkingConfig{
@@ -252,6 +262,7 @@ var _ = Context("RunContainer", func() {
 			}
 
 			fakeDockerClient := new(FakeCommonAPIClient)
+			configureNetworkInspect(fakeDockerClient)
 			fakeDockerClient.ContainerWaitReturns(closedContainerWaitOkBodyChan, nil)
 			fakeDockerClient.ContainerInspectReturns(types.ContainerJSON{NetworkSettings: &types.NetworkSettings{}}, nil)
 
@@ -272,19 +283,20 @@ var _ = Context("RunContainer", func() {
 			)
 
 			/* assert */
+			Expect(fakeDockerClient.ContainerCreateCallCount()).To(BeNumerically(">", 0))
 			actualCtx,
 				actualContainerConfig,
 				actualHostConfig,
 				actualNetworkingConfig,
 				actualPlatformConfig,
-				actualContainerName := fakeDockerClient.ContainerCreateArgsForCall(1)
+				actualContainerName := fakeDockerClient.ContainerCreateArgsForCall(fakeDockerClient.ContainerCreateCallCount() - 1)
 
 			Expect(actualCtx).To(Equal(providedCtx))
 			Expect(actualContainerConfig).To(Equal(expectedContainerConfig))
 			Expect(*actualHostConfig).To(Equal(*expectedHostConfig))
 			Expect(actualNetworkingConfig).To(Equal(expectedNetworkingConfig))
 			Expect(actualPlatformConfig).To(BeNil())
-			Expect(actualContainerName).To(Equal(fmt.Sprintf("opctl_%s", providedReq.ContainerID)))
+			Expect(actualContainerName).To(Equal(getContainerNameForCall(providedReq)))
 		})
 	})
 })
