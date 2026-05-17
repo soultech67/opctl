@@ -14,3 +14,14 @@ coverage/
 ### build
 /cli/opctl-*
 /opctl-*
+
+### graphify
+.graphify_python
+.graphify_detect.json
+.graphify_ast.json
+.graphify_cached.json
+.graphify_uncached.txt
+**/graphify-out/.graphify_*.json
+**/graphify-out/.graphify_python
+**/graphify-out/cache/
+**/graphify_output/cache/
