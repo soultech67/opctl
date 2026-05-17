@@ -5,6 +5,10 @@ inputs:
     string:
       constraints:
         format: semver
+  selfUpdateRepo:
+    string:
+      default: soultech67/opctl
+      description: GitHub owner/repo used by self-update to find releases.
   HOME:
     dir:
       description: Home directory of caller; used to access go modules
@@ -17,3 +21,4 @@ run:
         inputs:
           HOME:
           version:
+          selfUpdateRepo:

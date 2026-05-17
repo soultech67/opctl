@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file in
 accordance with
 [![keepachangelog 1.0.0](https://img.shields.io/badge/keepachangelog-1.0.0-brightgreen.svg)](http://keepachangelog.com/en/1.0.0/)
 
+## [0.1.76] - 2026-05-17
+
+### Added
+
+- Docker containers created by opctl now include opctl-managed labels for container ID, container name, image ref, and management ownership
+- New `opctl container ls` and `opctl node container ls` commands list opctl-managed containers with copyable delete labels
+- New `opctl container delete --label` and `opctl node container delete --label` commands delete opctl-managed containers by Docker labels,
+  with interactive selection when multiple containers match
+- Compile ops and Makefile helpers now support passing a `selfUpdateRepo` so fork builds can self-update from fork releases
+
+### Changed
+
+- Docker container names now include a readable slug from the container name or image plus a short ID, while preserving the `opctl_` prefix
+- Container cleanup now deletes by labels or exact selected container ID/name instead of relying only on legacy full-ID container names
+- `self-update` now uses a build-time configurable GitHub owner/repo instead of always checking `opctl/opctl`
+- Fork release, GitHub Actions, and issue-template configuration now target the `soultech67/opctl` fork
+
+### Fixed
+
+- `opctl node delete` no longer prints command usage for runtime cleanup errors
+- Docker cleanup treats containers already being removed as successfully deleted
+- Build ldflags for version and self-update repo are passed directly to `go build`, avoiding broken `GOFLAGS` parsing for multiple `-X` values
+
 ## [0.1.75] - 2026-03-19
 
 ### Fixed

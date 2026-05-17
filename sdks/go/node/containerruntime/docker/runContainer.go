@@ -67,27 +67,11 @@ func (cr _runContainer) RunContainer(
 
 	// for docker, we prefix name with opctl_ in order to allow external tools to know it's an opctl managed container
 	// do not change this prefix as it might break external consumers
-	dockerContainerName := getContainerName(req.ContainerID)
+	dockerContainerName := getContainerNameForCall(req)
 	defer func() {
 		// ensure container always cleaned up: gracefully stop then delete it
-		// @TODO: consolidate logic with DeleteContainerIfExists
 		newCtx := context.Background() // always use a fresh context, to clean up after cancellation
-		stopTimeout := 3
-		cr.dockerClient.ContainerStop(
-			newCtx,
-			dockerContainerName,
-			container.StopOptions{
-				Timeout: &stopTimeout,
-			},
-		)
-		cr.dockerClient.ContainerRemove(
-			newCtx,
-			dockerContainerName,
-			container.RemoveOptions{
-				RemoveVolumes: true,
-				Force:         true,
-			},
-		)
+		_ = deleteContainer(newCtx, cr.dockerClient, dockerContainerName)
 	}()
 
 	var imageErr error
@@ -145,6 +129,7 @@ func (cr _runContainer) RunContainer(
 			*req.Image.Ref,
 			portBindings,
 			req.WorkDir,
+			getContainerLabelsForCall(req),
 		),
 		constructHostConfig(
 			req.Dirs,

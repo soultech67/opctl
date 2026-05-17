@@ -10,7 +10,7 @@
     "call": {
       "authAddGithub": true,
       "expect": "success",
-      "opRef": "github.com/opctl/test-suite-auth#1.0.0",
+      "opRef": "__githubAuthTestOpRef__",
       "scope": {}
     }
   },
@@ -23,7 +23,7 @@
   {
     "call": {
       "expect": "failure",
-      "opRef": "github.com/opctl/test-suite-auth#1.0.0",
+      "opRef": "__githubAuthTestOpRef__",
       "scope": {}
     }
   }

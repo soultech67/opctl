@@ -1,0 +1,977 @@
+{
+  "nodes": [
+    {
+      "id": "cli_readme_cli_scope",
+      "label": "CLI for opctl",
+      "file_type": "document",
+      "source_file": "cli/README.md",
+      "source_location": "cli/README.md:1",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "cli_contributing_cobra_architecture",
+      "label": "Cobra Command Architecture",
+      "file_type": "document",
+      "source_file": "cli/CONTRIBUTING.md",
+      "source_location": "cli/CONTRIBUTING.md:2",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "cli_contributing_sdk_reuse",
+      "label": "Go SDK Reuse",
+      "file_type": "document",
+      "source_file": "cli/CONTRIBUTING.md",
+      "source_location": "cli/CONTRIBUTING.md:2",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "cli_contributing_embedded_webapp",
+      "label": "Embedded Web UI",
+      "file_type": "document",
+      "source_file": "cli/CONTRIBUTING.md",
+      "source_location": "cli/CONTRIBUTING.md:4",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "cli_contributing_interface_testing",
+      "label": "Interface-First Testing",
+      "file_type": "document",
+      "source_file": "cli/CONTRIBUTING.md",
+      "source_location": "cli/CONTRIBUTING.md:25",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "cli_contributing_sdk_rationale",
+      "label": "Keep non-CLI behavior in the SDK",
+      "file_type": "document",
+      "source_file": "cli/CONTRIBUTING.md",
+      "source_location": "cli/CONTRIBUTING.md:2",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "cli_contributing_fake_testing_rationale",
+      "label": "Depend on interfaces and fakes",
+      "file_type": "document",
+      "source_file": "cli/CONTRIBUTING.md",
+      "source_location": "cli/CONTRIBUTING.md:27",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "cli_test_cli_integration_suite",
+      "label": "CLI Integration Smoke Suite",
+      "file_type": "code",
+      "source_file": "cli/cli_test.go",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "main_panic_recovery",
+      "label": "Process Panic Recovery",
+      "file_type": "code",
+      "source_file": "cli/main.go",
+      "source_location": "cli/main.go:11",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "root_root_command",
+      "label": "Root Command",
+      "file_type": "code",
+      "source_file": "cli/cmd/root.go",
+      "source_location": "cli/cmd/root.go:70",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "root_env_var_flag_binding",
+      "label": "Environment Variable Flag Binding",
+      "file_type": "code",
+      "source_file": "cli/cmd/root.go",
+      "source_location": "cli/cmd/root.go:303",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "root_command_registry",
+      "label": "Command Registry",
+      "file_type": "code",
+      "source_file": "cli/cmd/root.go",
+      "source_location": "cli/cmd/root.go:249",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "auth_auth_command_group",
+      "label": "Auth Command Group",
+      "file_type": "code",
+      "source_file": "cli/cmd/auth/auth.go",
+      "source_location": "cli/cmd/auth/auth.go:8",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "auth_add_registry_auth",
+      "label": "Registry Auth Storage",
+      "file_type": "code",
+      "source_file": "cli/cmd/auth/add.go",
+      "source_location": "cli/cmd/auth/add.go:16",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "events_event_streaming",
+      "label": "Event Streaming Command",
+      "file_type": "code",
+      "source_file": "cli/cmd/events.go",
+      "source_location": "cli/cmd/events.go:12",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "ls_operation_listing",
+      "label": "Operation Listing Command",
+      "file_type": "code",
+      "source_file": "cli/cmd/ls.go",
+      "source_location": "cli/cmd/ls.go:18",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "ui_web_ui_mount_flow",
+      "label": "Web UI Mount Flow",
+      "file_type": "code",
+      "source_file": "cli/cmd/ui.go",
+      "source_location": "cli/cmd/ui.go:17",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "run_op_execution_flow",
+      "label": "Op Execution Flow",
+      "file_type": "code",
+      "source_file": "cli/cmd/run.go",
+      "source_location": "cli/cmd/run.go:24",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "run_input_resolution_pipeline",
+      "label": "Input Resolution Pipeline",
+      "file_type": "code",
+      "source_file": "cli/cmd/run.go",
+      "source_location": "cli/cmd/run.go:129",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "run_live_call_graph",
+      "label": "Live Call Graph Renderer",
+      "file_type": "code",
+      "source_file": "cli/cmd/run.go",
+      "source_location": "cli/cmd/run.go:196",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "run_signal_aware_shutdown",
+      "label": "Signal-Aware Op Shutdown",
+      "file_type": "code",
+      "source_file": "cli/cmd/run.go",
+      "source_location": "cli/cmd/run.go:145",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "shared_implicit_node_bootstrap",
+      "label": "Implicit Local Node Bootstrap",
+      "file_type": "code",
+      "source_file": "cli/cmd/events.go",
+      "source_location": "cli/cmd/events.go:32",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "shared_reference_resolution",
+      "label": "Reference Resolution Flow",
+      "file_type": "code",
+      "source_file": "cli/cmd/run.go",
+      "source_location": "cli/cmd/run.go:95",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "node_command_group",
+      "label": "Node Command Group",
+      "file_type": "code",
+      "source_file": "cli/cmd/node/node.go",
+      "source_location": "cli/cmd/node/node.go:14",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "node_container_runtime_selection",
+      "label": "Container Runtime Selection",
+      "file_type": "code",
+      "source_file": "cli/cmd/node/getContainerRuntime.go",
+      "source_location": "cli/cmd/node/getContainerRuntime.go:13",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "node_node_bootstrap_flow",
+      "label": "Node Bootstrap Flow",
+      "file_type": "code",
+      "source_file": "cli/cmd/node/create.go",
+      "source_location": "cli/cmd/node/create.go:22",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "node_destructive_delete",
+      "label": "Destructive Node Deletion",
+      "file_type": "code",
+      "source_file": "cli/cmd/node/delete.go",
+      "source_location": "cli/cmd/node/delete.go:13",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "node_non_destructive_kill",
+      "label": "Non-Destructive Node Kill",
+      "file_type": "code",
+      "source_file": "cli/cmd/node/kill.go",
+      "source_location": "cli/cmd/node/kill.go:11",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "selfupdate_self_update_flow",
+      "label": "Self Update Flow",
+      "file_type": "code",
+      "source_file": "cli/cmd/selfUpdate.go",
+      "source_location": "cli/cmd/selfUpdate.go:14",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "op_create_scaffold",
+      "label": "Op Scaffold Creation",
+      "file_type": "code",
+      "source_file": "cli/cmd/op/create.go",
+      "source_location": "cli/cmd/op/create.go:12",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "op_install_remote_pkg",
+      "label": "Remote Op Install Flow",
+      "file_type": "code",
+      "source_file": "cli/cmd/op/install.go",
+      "source_location": "cli/cmd/op/install.go:15",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "op_kill_command",
+      "label": "Op Kill Command",
+      "file_type": "code",
+      "source_file": "cli/cmd/op/kill.go",
+      "source_location": "cli/cmd/op/kill.go:10",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "cli_contributing_sdk_rationale",
+      "target": "cli_contributing_sdk_reuse",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/CONTRIBUTING.md",
+      "source_location": "cli/CONTRIBUTING.md:2",
+      "weight": 1.0
+    },
+    {
+      "source": "cli_contributing_fake_testing_rationale",
+      "target": "cli_contributing_interface_testing",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/CONTRIBUTING.md",
+      "source_location": "cli/CONTRIBUTING.md:27",
+      "weight": 1.0
+    },
+    {
+      "source": "cli_readme_cli_scope",
+      "target": "root_root_command",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.78,
+      "source_file": "cli/README.md",
+      "source_location": "cli/README.md:1",
+      "weight": 1.0
+    },
+    {
+      "source": "cli_contributing_cobra_architecture",
+      "target": "root_root_command",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "cli/CONTRIBUTING.md",
+      "source_location": "cli/CONTRIBUTING.md:2",
+      "weight": 1.0
+    },
+    {
+      "source": "cli_contributing_sdk_reuse",
+      "target": "run_op_execution_flow",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.81,
+      "source_file": "cli/CONTRIBUTING.md",
+      "source_location": "cli/CONTRIBUTING.md:2",
+      "weight": 1.0
+    },
+    {
+      "source": "cli_contributing_embedded_webapp",
+      "target": "ui_web_ui_mount_flow",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.84,
+      "source_file": "cli/CONTRIBUTING.md",
+      "source_location": "cli/CONTRIBUTING.md:4",
+      "weight": 1.0
+    },
+    {
+      "source": "cli_contributing_interface_testing",
+      "target": "cli_test_cli_integration_suite",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.89,
+      "source_file": "cli/CONTRIBUTING.md",
+      "source_location": "cli/CONTRIBUTING.md:25",
+      "weight": 1.0
+    },
+    {
+      "source": "main_panic_recovery",
+      "target": "root_root_command",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/main.go",
+      "source_location": "cli/main.go:24",
+      "weight": 1.0
+    },
+    {
+      "source": "root_root_command",
+      "target": "root_command_registry",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/root.go",
+      "source_location": "cli/cmd/root.go:249",
+      "weight": 1.0
+    },
+    {
+      "source": "root_root_command",
+      "target": "root_env_var_flag_binding",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/root.go",
+      "source_location": "cli/cmd/root.go:298",
+      "weight": 1.0
+    },
+    {
+      "source": "root_command_registry",
+      "target": "auth_auth_command_group",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/root.go",
+      "source_location": "cli/cmd/root.go:249",
+      "weight": 1.0
+    },
+    {
+      "source": "root_command_registry",
+      "target": "events_event_streaming",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/root.go",
+      "source_location": "cli/cmd/root.go:254",
+      "weight": 1.0
+    },
+    {
+      "source": "root_command_registry",
+      "target": "ls_operation_listing",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/root.go",
+      "source_location": "cli/cmd/root.go:260",
+      "weight": 1.0
+    },
+    {
+      "source": "root_command_registry",
+      "target": "node_command_group",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/root.go",
+      "source_location": "cli/cmd/root.go:266",
+      "weight": 1.0
+    },
+    {
+      "source": "root_command_registry",
+      "target": "run_op_execution_flow",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/root.go",
+      "source_location": "cli/cmd/root.go:278",
+      "weight": 1.0
+    },
+    {
+      "source": "root_command_registry",
+      "target": "selfupdate_self_update_flow",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/root.go",
+      "source_location": "cli/cmd/root.go:284",
+      "weight": 1.0
+    },
+    {
+      "source": "root_command_registry",
+      "target": "ui_web_ui_mount_flow",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/root.go",
+      "source_location": "cli/cmd/root.go:290",
+      "weight": 1.0
+    },
+    {
+      "source": "root_env_var_flag_binding",
+      "target": "root_command_registry",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/root.go",
+      "source_location": "cli/cmd/root.go:298",
+      "weight": 1.0
+    },
+    {
+      "source": "auth_auth_command_group",
+      "target": "auth_add_registry_auth",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/auth/auth.go",
+      "source_location": "cli/cmd/auth/auth.go:16",
+      "weight": 1.0
+    },
+    {
+      "source": "events_event_streaming",
+      "target": "shared_implicit_node_bootstrap",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/events.go",
+      "source_location": "cli/cmd/events.go:32",
+      "weight": 1.0
+    },
+    {
+      "source": "ls_operation_listing",
+      "target": "shared_implicit_node_bootstrap",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/ls.go",
+      "source_location": "cli/cmd/ls.go:48",
+      "weight": 1.0
+    },
+    {
+      "source": "ui_web_ui_mount_flow",
+      "target": "shared_implicit_node_bootstrap",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/ui.go",
+      "source_location": "cli/cmd/ui.go:47",
+      "weight": 1.0
+    },
+    {
+      "source": "run_op_execution_flow",
+      "target": "shared_implicit_node_bootstrap",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/run.go",
+      "source_location": "cli/cmd/run.go:90",
+      "weight": 1.0
+    },
+    {
+      "source": "auth_add_registry_auth",
+      "target": "shared_implicit_node_bootstrap",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/auth/add.go",
+      "source_location": "cli/cmd/auth/add.go:42",
+      "weight": 1.0
+    },
+    {
+      "source": "run_op_execution_flow",
+      "target": "shared_reference_resolution",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/run.go",
+      "source_location": "cli/cmd/run.go:95",
+      "weight": 1.0
+    },
+    {
+      "source": "ls_operation_listing",
+      "target": "shared_reference_resolution",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/ls.go",
+      "source_location": "cli/cmd/ls.go:53",
+      "weight": 1.0
+    },
+    {
+      "source": "ui_web_ui_mount_flow",
+      "target": "shared_reference_resolution",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/ui.go",
+      "source_location": "cli/cmd/ui.go:65",
+      "weight": 1.0
+    },
+    {
+      "source": "op_install_remote_pkg",
+      "target": "shared_reference_resolution",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/op/install.go",
+      "source_location": "cli/cmd/op/install.go:64",
+      "weight": 1.0
+    },
+    {
+      "source": "run_op_execution_flow",
+      "target": "run_input_resolution_pipeline",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/run.go",
+      "source_location": "cli/cmd/run.go:129",
+      "weight": 1.0
+    },
+    {
+      "source": "run_op_execution_flow",
+      "target": "run_live_call_graph",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/run.go",
+      "source_location": "cli/cmd/run.go:196",
+      "weight": 1.0
+    },
+    {
+      "source": "run_op_execution_flow",
+      "target": "run_signal_aware_shutdown",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/run.go",
+      "source_location": "cli/cmd/run.go:145",
+      "weight": 1.0
+    },
+    {
+      "source": "run_live_call_graph",
+      "target": "events_event_streaming",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.82,
+      "source_file": "cli/cmd/run.go",
+      "source_location": "cli/cmd/run.go:218",
+      "weight": 1.0
+    },
+    {
+      "source": "run_signal_aware_shutdown",
+      "target": "op_kill_command",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.81,
+      "source_file": "cli/cmd/run.go",
+      "source_location": "cli/cmd/run.go:239",
+      "weight": 1.0
+    },
+    {
+      "source": "auth_add_registry_auth",
+      "target": "op_install_remote_pkg",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.76,
+      "source_file": "cli/cmd/auth/add.go",
+      "source_location": "cli/cmd/auth/add.go:33",
+      "weight": 1.0
+    },
+    {
+      "source": "node_command_group",
+      "target": "node_container_runtime_selection",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/node/node.go",
+      "source_location": "cli/cmd/node/node.go:23",
+      "weight": 1.0
+    },
+    {
+      "source": "node_command_group",
+      "target": "node_node_bootstrap_flow",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/node/node.go",
+      "source_location": "cli/cmd/node/node.go:33",
+      "weight": 1.0
+    },
+    {
+      "source": "node_command_group",
+      "target": "node_destructive_delete",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/node/node.go",
+      "source_location": "cli/cmd/node/node.go:40",
+      "weight": 1.0
+    },
+    {
+      "source": "node_command_group",
+      "target": "node_non_destructive_kill",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/node/node.go",
+      "source_location": "cli/cmd/node/node.go:46",
+      "weight": 1.0
+    },
+    {
+      "source": "node_node_bootstrap_flow",
+      "target": "node_container_runtime_selection",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "cli/cmd/node/create.go",
+      "source_location": "cli/cmd/node/create.go:67",
+      "weight": 1.0
+    },
+    {
+      "source": "node_destructive_delete",
+      "target": "node_container_runtime_selection",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "cli/cmd/node/delete.go",
+      "source_location": "cli/cmd/node/delete.go:34",
+      "weight": 1.0
+    },
+    {
+      "source": "node_non_destructive_kill",
+      "target": "node_container_runtime_selection",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "cli/cmd/node/kill.go",
+      "source_location": "cli/cmd/node/kill.go:44",
+      "weight": 1.0
+    },
+    {
+      "source": "node_destructive_delete",
+      "target": "node_node_bootstrap_flow",
+      "relation": "shares_data_with",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "cli/cmd/node/delete.go",
+      "source_location": "cli/cmd/node/delete.go:51",
+      "weight": 1.0
+    },
+    {
+      "source": "node_non_destructive_kill",
+      "target": "node_node_bootstrap_flow",
+      "relation": "shares_data_with",
+      "confidence": "INFERRED",
+      "confidence_score": 0.72,
+      "source_file": "cli/cmd/node/kill.go",
+      "source_location": "cli/cmd/node/kill.go:19",
+      "weight": 1.0
+    },
+    {
+      "source": "selfupdate_self_update_flow",
+      "target": "node_non_destructive_kill",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.84,
+      "source_file": "cli/cmd/selfUpdate.go",
+      "source_location": "cli/cmd/selfUpdate.go:49",
+      "weight": 1.0
+    },
+    {
+      "source": "cli_test_cli_integration_suite",
+      "target": "auth_add_registry_auth",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cli_test.go",
+      "source_location": "cli/cli_test.go:54",
+      "weight": 1.0
+    },
+    {
+      "source": "cli_test_cli_integration_suite",
+      "target": "events_event_streaming",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cli_test.go",
+      "source_location": "cli/cli_test.go:71",
+      "weight": 1.0
+    },
+    {
+      "source": "cli_test_cli_integration_suite",
+      "target": "ls_operation_listing",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cli_test.go",
+      "source_location": "cli/cli_test.go:87",
+      "weight": 1.0
+    },
+    {
+      "source": "cli_test_cli_integration_suite",
+      "target": "node_node_bootstrap_flow",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cli_test.go",
+      "source_location": "cli/cli_test.go:130",
+      "weight": 1.0
+    },
+    {
+      "source": "cli_test_cli_integration_suite",
+      "target": "node_destructive_delete",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cli_test.go",
+      "source_location": "cli/cli_test.go:147",
+      "weight": 1.0
+    },
+    {
+      "source": "cli_test_cli_integration_suite",
+      "target": "node_non_destructive_kill",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cli_test.go",
+      "source_location": "cli/cli_test.go:163",
+      "weight": 1.0
+    },
+    {
+      "source": "cli_test_cli_integration_suite",
+      "target": "op_create_scaffold",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cli_test.go",
+      "source_location": "cli/cli_test.go:182",
+      "weight": 1.0
+    },
+    {
+      "source": "cli_test_cli_integration_suite",
+      "target": "op_install_remote_pkg",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cli_test.go",
+      "source_location": "cli/cli_test.go:238",
+      "weight": 1.0
+    },
+    {
+      "source": "cli_test_cli_integration_suite",
+      "target": "op_kill_command",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cli_test.go",
+      "source_location": "cli/cli_test.go:259",
+      "weight": 1.0
+    },
+    {
+      "source": "cli_test_cli_integration_suite",
+      "target": "run_op_execution_flow",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cli_test.go",
+      "source_location": "cli/cli_test.go:292",
+      "weight": 1.0
+    },
+    {
+      "source": "cli_test_cli_integration_suite",
+      "target": "selfupdate_self_update_flow",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cli_test.go",
+      "source_location": "cli/cli_test.go:322",
+      "weight": 1.0
+    },
+    {
+      "source": "cli_test_cli_integration_suite",
+      "target": "ui_web_ui_mount_flow",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cli_test.go",
+      "source_location": "cli/cli_test.go:338",
+      "weight": 1.0
+    },
+    {
+      "source": "op_create_scaffold",
+      "target": "ls_operation_listing",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.67,
+      "source_file": "cli/cmd/op/create.go",
+      "source_location": "cli/cmd/op/create.go:27",
+      "weight": 1.0
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "primary_command_surface",
+      "label": "Primary Command Surface",
+      "nodes": [
+        "events_event_streaming",
+        "ls_operation_listing",
+        "run_op_execution_flow",
+        "selfupdate_self_update_flow",
+        "ui_web_ui_mount_flow"
+      ],
+      "relation": "participate_in",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/root.go"
+    },
+    {
+      "id": "auto_start_node_commands",
+      "label": "Commands That Auto-Start a Node",
+      "nodes": [
+        "auth_add_registry_auth",
+        "events_event_streaming",
+        "ls_operation_listing",
+        "run_op_execution_flow",
+        "ui_web_ui_mount_flow"
+      ],
+      "relation": "participate_in",
+      "confidence": "INFERRED",
+      "confidence_score": 0.92,
+      "source_file": "cli/cmd/run.go"
+    },
+    {
+      "id": "node_lifecycle_management",
+      "label": "Node Lifecycle Management",
+      "nodes": [
+        "node_container_runtime_selection",
+        "node_node_bootstrap_flow",
+        "node_destructive_delete",
+        "node_non_destructive_kill",
+        "selfupdate_self_update_flow"
+      ],
+      "relation": "form",
+      "confidence": "INFERRED",
+      "confidence_score": 0.84,
+      "source_file": "cli/cmd/node/node.go"
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

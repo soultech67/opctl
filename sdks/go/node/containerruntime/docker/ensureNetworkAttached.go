@@ -367,7 +367,7 @@ func setupVm(
 		return err
 	}
 
-	containerName := getContainerName(fmt.Sprintf("wireguard-setup-%s", uuid.NewV4().String()))
+	containerName := getContainerName(uuid.NewV4().String(), "wireguard-setup")
 
 	defer dockerClient.ContainerRemove(
 		context.Background(),

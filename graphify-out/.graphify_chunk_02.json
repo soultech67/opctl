@@ -1,0 +1,875 @@
+{
+  "nodes": [
+    {
+      "id": "op_op_command_root",
+      "label": "Op Command Root",
+      "file_type": "code",
+      "source_file": "cli/cmd/op/op.go",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "validate_validate_command",
+      "label": "Validate Command",
+      "file_type": "code",
+      "source_file": "cli/cmd/op/validate.go",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "validate_validation_data_resolution",
+      "label": "Validation Data Resolution",
+      "file_type": "code",
+      "source_file": "cli/cmd/op/validate.go",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "validate_auth_reprompt_behavior",
+      "label": "Auth Re-prompt Behavior",
+      "file_type": "code",
+      "source_file": "cli/cmd/op/validate.go",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_cli_text_coloring_library",
+      "label": "CLI Text Coloring Library",
+      "file_type": "document",
+      "source_file": "cli/internal/clicolorer/README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_cross_platform_terminal_support",
+      "label": "Cross Platform Terminal Support",
+      "file_type": "document",
+      "source_file": "cli/internal/clicolorer/README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_fakeable_colorer_api",
+      "label": "Fakeable Colorer API",
+      "file_type": "document",
+      "source_file": "cli/internal/clicolorer/README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "clicolorer_colorer_interface",
+      "label": "CliColorer Interface",
+      "file_type": "code",
+      "source_file": "cli/internal/clicolorer/cliColorer.go",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "clicolorer_colorer_implementation",
+      "label": "cliColorer Implementation",
+      "file_type": "code",
+      "source_file": "cli/internal/clicolorer/cliColorer.go",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "clicolorer_disable_color_mode",
+      "label": "Disable Color Mode",
+      "file_type": "code",
+      "source_file": "cli/internal/clicolorer/cliColorer.go",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "clicolorer_terminal_color_roles",
+      "label": "Terminal Color Roles",
+      "file_type": "code",
+      "source_file": "cli/internal/clicolorer/cliColorer.go",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "clicolorer_fake_cli_colorer",
+      "label": "Fake CliColorer",
+      "file_type": "code",
+      "source_file": "cli/internal/clicolorer/fakes/cliColorer.go",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_cli_output_library",
+      "label": "CLI Output Library",
+      "file_type": "document",
+      "source_file": "cli/internal/clioutput/README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_output_cross_platform_support",
+      "label": "Cross Platform Terminal Support",
+      "file_type": "document",
+      "source_file": "cli/internal/clioutput/README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_semantic_output_coloring",
+      "label": "Semantic Output Coloring",
+      "file_type": "document",
+      "source_file": "cli/internal/clioutput/README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_fakeable_output_api",
+      "label": "Fakeable Output API",
+      "file_type": "document",
+      "source_file": "cli/internal/clioutput/README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "clioutput_output_interface",
+      "label": "CliOutput Interface",
+      "file_type": "code",
+      "source_file": "cli/internal/clioutput/cliOutput.go",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "clioutput_output_implementation",
+      "label": "CLI Output Implementation",
+      "file_type": "code",
+      "source_file": "cli/internal/clioutput/cliOutput.go",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "clioutput_writer_abstraction",
+      "label": "Writer Abstraction",
+      "file_type": "code",
+      "source_file": "cli/internal/clioutput/cliOutput.go",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "clioutput_event_renderer",
+      "label": "Event Renderer",
+      "file_type": "code",
+      "source_file": "cli/internal/clioutput/cliOutput.go",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "formatopref_op_reference_formatter",
+      "label": "Op Reference Formatter",
+      "file_type": "code",
+      "source_file": "cli/internal/clioutput/formatOpRef.go",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "runerror_run_error_exit_code",
+      "label": "Run Error Exit Code",
+      "file_type": "code",
+      "source_file": "cli/internal/clioutput/runError.go",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "fakewriter_writer_test_double",
+      "label": "Writer Test Double",
+      "file_type": "code",
+      "source_file": "cli/internal/clioutput/fakeWriter.go",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_cli_param_satisfaction_library",
+      "label": "CLI Parameter Satisfaction Library",
+      "file_type": "document",
+      "source_file": "cli/internal/cliparamsatisfier/README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_param_cross_platform_support",
+      "label": "Cross Platform Terminal Support",
+      "file_type": "document",
+      "source_file": "cli/internal/cliparamsatisfier/README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_secret_prompt_hiding",
+      "label": "Secret Prompt Hiding",
+      "file_type": "document",
+      "source_file": "cli/internal/cliparamsatisfier/README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_fakeable_param_api",
+      "label": "Fakeable Param API",
+      "file_type": "document",
+      "source_file": "cli/internal/cliparamsatisfier/README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "cliparamsatisfier_param_satisfier_interface",
+      "label": "CLIParamSatisfier Interface",
+      "file_type": "code",
+      "source_file": "cli/internal/cliparamsatisfier/cliParamSatisfier.go",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "cliparamsatisfier_param_satisfier_implementation",
+      "label": "CLI Param Satisfier",
+      "file_type": "code",
+      "source_file": "cli/internal/cliparamsatisfier/cliParamSatisfier.go",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "cliparamsatisfier_typed_param_coercion",
+      "label": "Typed Parameter Coercion",
+      "file_type": "code",
+      "source_file": "cli/internal/cliparamsatisfier/cliParamSatisfier.go",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "cliparamsatisfier_validation_retry_feedback",
+      "label": "Validation Retry Feedback",
+      "file_type": "code",
+      "source_file": "cli/internal/cliparamsatisfier/cliParamSatisfier.go",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "cliparamsatisfier_credential_param_ordering",
+      "label": "Credential Aware Param Ordering",
+      "file_type": "code",
+      "source_file": "cli/internal/cliparamsatisfier/cliParamSatisfier.go",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "inputsourcer_input_source_chain",
+      "label": "Input Source Chain",
+      "file_type": "code",
+      "source_file": "cli/internal/cliparamsatisfier/inputSourcer.go",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "inputsrcfactory_input_source_factory",
+      "label": "Input Source Factory",
+      "file_type": "code",
+      "source_file": "cli/internal/cliparamsatisfier/inputSrcFactory.go",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "op_op_command_root",
+      "target": "validate_validate_command",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/op/op.go",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "validate_validate_command",
+      "target": "validate_validation_data_resolution",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/op/validate.go",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "validate_validate_command",
+      "target": "cliparamsatisfier_param_satisfier_interface",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/op/validate.go",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "validate_validate_command",
+      "target": "validate_auth_reprompt_behavior",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/op/validate.go",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "validate_validation_data_resolution",
+      "target": "cliparamsatisfier_param_satisfier_interface",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/cmd/op/validate.go",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "validate_auth_reprompt_behavior",
+      "target": "cliparamsatisfier_param_satisfier_implementation",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.68,
+      "source_file": "cli/cmd/op/validate.go",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_cli_text_coloring_library",
+      "target": "clicolorer_colorer_implementation",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/internal/clicolorer/README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_cross_platform_terminal_support",
+      "target": "clicolorer_colorer_implementation",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/internal/clicolorer/README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_fakeable_colorer_api",
+      "target": "clicolorer_colorer_interface",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/internal/clicolorer/README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "clicolorer_colorer_implementation",
+      "target": "clicolorer_colorer_interface",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/internal/clicolorer/cliColorer.go",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "clicolorer_fake_cli_colorer",
+      "target": "clicolorer_colorer_interface",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/internal/clicolorer/fakes/cliColorer.go",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "clicolorer_colorer_implementation",
+      "target": "clicolorer_disable_color_mode",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/internal/clicolorer/cliColorer.go",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "clicolorer_colorer_implementation",
+      "target": "clicolorer_terminal_color_roles",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/internal/clicolorer/cliColorer.go",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_cli_output_library",
+      "target": "clioutput_output_implementation",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/internal/clioutput/README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_output_cross_platform_support",
+      "target": "clioutput_output_implementation",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/internal/clioutput/README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_semantic_output_coloring",
+      "target": "clioutput_output_implementation",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/internal/clioutput/README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_fakeable_output_api",
+      "target": "clioutput_output_interface",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/internal/clioutput/README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "clioutput_output_implementation",
+      "target": "clioutput_output_interface",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/internal/clioutput/cliOutput.go",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "clioutput_output_implementation",
+      "target": "clioutput_writer_abstraction",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/internal/clioutput/cliOutput.go",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "clioutput_output_implementation",
+      "target": "clicolorer_colorer_interface",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/internal/clioutput/cliOutput.go",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "clioutput_output_implementation",
+      "target": "clicolorer_disable_color_mode",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/internal/clioutput/cliOutput.go",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "clioutput_output_implementation",
+      "target": "clioutput_event_renderer",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/internal/clioutput/cliOutput.go",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "clioutput_event_renderer",
+      "target": "formatopref_op_reference_formatter",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/internal/clioutput/cliOutput.go",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "clioutput_event_renderer",
+      "target": "clicolorer_terminal_color_roles",
+      "relation": "shares_data_with",
+      "confidence": "INFERRED",
+      "confidence_score": 0.82,
+      "source_file": "cli/internal/clioutput/cliOutput.go",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "fakewriter_writer_test_double",
+      "target": "clioutput_writer_abstraction",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/internal/clioutput/fakeWriter.go",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_cli_param_satisfaction_library",
+      "target": "cliparamsatisfier_param_satisfier_implementation",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/internal/cliparamsatisfier/README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_param_cross_platform_support",
+      "target": "cliparamsatisfier_param_satisfier_implementation",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/internal/cliparamsatisfier/README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_secret_prompt_hiding",
+      "target": "inputsrcfactory_input_source_factory",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/internal/cliparamsatisfier/README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_fakeable_param_api",
+      "target": "cliparamsatisfier_param_satisfier_interface",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/internal/cliparamsatisfier/README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "cliparamsatisfier_param_satisfier_implementation",
+      "target": "cliparamsatisfier_param_satisfier_interface",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/internal/cliparamsatisfier/cliParamSatisfier.go",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "cliparamsatisfier_param_satisfier_implementation",
+      "target": "clioutput_output_interface",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/internal/cliparamsatisfier/cliParamSatisfier.go",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "cliparamsatisfier_param_satisfier_implementation",
+      "target": "inputsourcer_input_source_chain",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/internal/cliparamsatisfier/cliParamSatisfier.go",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "cliparamsatisfier_param_satisfier_implementation",
+      "target": "cliparamsatisfier_typed_param_coercion",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/internal/cliparamsatisfier/cliParamSatisfier.go",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "cliparamsatisfier_param_satisfier_implementation",
+      "target": "cliparamsatisfier_validation_retry_feedback",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/internal/cliparamsatisfier/cliParamSatisfier.go",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "cliparamsatisfier_param_satisfier_implementation",
+      "target": "inputsrcfactory_input_source_factory",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/internal/cliparamsatisfier/cliParamSatisfier.go",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "cliparamsatisfier_param_satisfier_implementation",
+      "target": "cliparamsatisfier_credential_param_ordering",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/internal/cliparamsatisfier/cliParamSatisfier.go",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "cliparamsatisfier_validation_retry_feedback",
+      "target": "clioutput_output_interface",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/internal/cliparamsatisfier/cliParamSatisfier.go",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "inputsourcer_input_source_chain",
+      "target": "inputsrcfactory_input_source_factory",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.84,
+      "source_file": "cli/internal/cliparamsatisfier/inputSourcer.go",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "inputsrcfactory_input_source_factory",
+      "target": "clioutput_output_interface",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "cli/internal/cliparamsatisfier/inputSrcFactory.go",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_fakeable_colorer_api",
+      "target": "readme_fakeable_output_api",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.92,
+      "source_file": "cli/internal/clicolorer/README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_fakeable_output_api",
+      "target": "readme_fakeable_param_api",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.92,
+      "source_file": "cli/internal/clioutput/README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_fakeable_colorer_api",
+      "target": "readme_fakeable_param_api",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.89,
+      "source_file": "cli/internal/clicolorer/README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_cross_platform_terminal_support",
+      "target": "readme_output_cross_platform_support",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.91,
+      "source_file": "cli/internal/clicolorer/README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_output_cross_platform_support",
+      "target": "readme_param_cross_platform_support",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "cli/internal/clioutput/README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_cross_platform_terminal_support",
+      "target": "readme_param_cross_platform_support",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.88,
+      "source_file": "cli/internal/clicolorer/README.md",
+      "source_location": null,
+      "weight": 1.0
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "terminal_interaction_stack",
+      "label": "Terminal Interaction Stack",
+      "nodes": [
+        "clicolorer_colorer_implementation",
+        "clioutput_output_implementation",
+        "cliparamsatisfier_param_satisfier_implementation"
+      ],
+      "relation": "participate_in",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "cli/internal/cliparamsatisfier/cliParamSatisfier.go"
+    },
+    {
+      "id": "input_resolution_pipeline",
+      "label": "Input Resolution Pipeline",
+      "nodes": [
+        "cliparamsatisfier_param_satisfier_implementation",
+        "inputsourcer_input_source_chain",
+        "inputsrcfactory_input_source_factory",
+        "cliparamsatisfier_typed_param_coercion"
+      ],
+      "relation": "form",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "cli/internal/cliparamsatisfier/cliParamSatisfier.go"
+    },
+    {
+      "id": "event_rendering_pipeline",
+      "label": "Event Rendering Pipeline",
+      "nodes": [
+        "clioutput_output_implementation",
+        "clioutput_event_renderer",
+        "formatopref_op_reference_formatter",
+        "clicolorer_terminal_color_roles"
+      ],
+      "relation": "form",
+      "confidence": "INFERRED",
+      "confidence_score": 0.88,
+      "source_file": "cli/internal/clioutput/cliOutput.go"
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

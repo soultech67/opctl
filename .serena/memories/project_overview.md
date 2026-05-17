@@ -1,0 +1,5 @@
+`opctl-src` is the opctl monorepo. It contains a Go-based core plus related subprojects: `api` (OpenAPI spec), `cli` (CLI), `opspec` (schema/language), `sdks/go`, `sdks/js`, `test-suite`, `webapp`, and `website`. The repo uses a single Go module (`module github.com/opctl/opctl`, Go 1.25.0) and also has Yarn workspaces for `webapp` and `sdks/js`.
+
+The repo is built and validated primarily through `opctl run ...` tasks defined in `.opspec`, with GitHub Actions using `opctl run changelog/find-in-diff`, `opctl run changelog/lint`, `opctl run -a version=0.0.0 compile`, `opctl run -a githubAccessToken=... test`, and `opctl run ... release`.
+
+The `cli` subproject is the command-line interface for opctl and is a major consumer of `sdks/go` and `test-suite`. The codebase is mostly Go, with web assets under `webapp` and `website`.

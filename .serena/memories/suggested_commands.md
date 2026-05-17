@@ -1,0 +1,13 @@
+Common commands for this repo on Darwin/macOS:
+- `go version` to verify the Go toolchain matches `go.mod` expectations.
+- `brew install gpgme` to satisfy the documented macOS native dependency.
+- `go build -o opctl-beta ./cli` to build the CLI locally.
+- `go run github.com/go-delve/delve/cmd/dlv --check-go-version=false --listen=127.0.0.1:40000 --headless=true --api-version=2 exec /PATH/TO/OPCTL/opctl-beta run dev` to debug the CLI.
+- `opctl node kill` before attaching a debugger to a node process.
+- `opctl run compile` from `cli/` to compile and test the CLI.
+- `opctl run test` from `cli/` to compile and test the CLI.
+- `opctl run generate` from `cli/` to regenerate fakes/interfaces.
+- `opctl run -a version=0.0.0 compile` from the repo root to match CI compilation.
+- `opctl run -a githubAccessToken=... test` from the repo root to match CI tests.
+- `opctl run changelog/lint` and `opctl run changelog/find-in-diff` for changelog checks.
+- Standard Darwin shell commands available: `git`, `ls`, `cd`, `rg`, `find`, `sed`, `awk`, `xargs`, `tar`, `curl`, `brew`.

@@ -14,9 +14,11 @@ func constructContainerConfig(
 	imageRef string,
 	portBindings nat.PortMap,
 	workDir string,
+	labels map[string]string,
 ) *container.Config {
 	containerConfig := &container.Config{
 		Image:        imageRef,
+		Labels:       labels,
 		WorkingDir:   workDir,
 		Tty:          true,
 		ExposedPorts: nat.PortSet{},

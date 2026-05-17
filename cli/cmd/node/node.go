@@ -21,6 +21,8 @@ func NewNodeCmd(
 	}
 
 	nodeCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true
+
 		var err error
 		*containerRuntime, err = getContainerRuntime(
 			cmd.Context(),
@@ -30,6 +32,11 @@ func NewNodeCmd(
 		return err
 	}
 
+	nodeCmd.AddCommand(
+		newContainerCmd(
+			containerRuntime,
+		),
+	)
 	nodeCmd.AddCommand(
 		newCreateCmd(
 			cliColorer,

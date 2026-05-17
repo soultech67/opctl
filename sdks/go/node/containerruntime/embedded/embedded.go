@@ -63,6 +63,54 @@ func (cr _containerRuntime) DeleteContainerIfExists(
 	return dockerCR.DeleteContainerIfExists(ctx, containerID)
 }
 
+func (cr _containerRuntime) DeleteContainer(
+	ctx context.Context,
+	containerIDOrName string,
+) error {
+	if _, isRunning := cr.getInstanceStatus(ctx); !isRunning {
+		return nil
+	}
+
+	dockerCR, err := cr.getDockerContainerRuntime(ctx)
+	if err != nil {
+		return err
+	}
+
+	return dockerCR.DeleteContainer(ctx, containerIDOrName)
+}
+
+func (cr _containerRuntime) DeleteContainersByLabels(
+	ctx context.Context,
+	labels []string,
+) error {
+	if _, isRunning := cr.getInstanceStatus(ctx); !isRunning {
+		return nil
+	}
+
+	dockerCR, err := cr.getDockerContainerRuntime(ctx)
+	if err != nil {
+		return err
+	}
+
+	return dockerCR.DeleteContainersByLabels(ctx, labels)
+}
+
+func (cr _containerRuntime) ListContainersByLabels(
+	ctx context.Context,
+	labels []string,
+) ([]containerruntime.Container, error) {
+	if _, isRunning := cr.getInstanceStatus(ctx); !isRunning {
+		return nil, nil
+	}
+
+	dockerCR, err := cr.getDockerContainerRuntime(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return dockerCR.ListContainersByLabels(ctx, labels)
+}
+
 func (cr _containerRuntime) Kill(
 	ctx context.Context,
 ) error {
