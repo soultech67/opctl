@@ -22,7 +22,7 @@ import TabItem from '@theme/TabItem';
         spec:
         containers:
             - name: opctl
-            image: ghcr.io/opctl/opctl:0.1.58-dind
+            image: ghcr.io/soultech67/opctl:0.1.76-dind
             ports:
                 # expose to other containers
                 - name: http
@@ -44,7 +44,7 @@ import TabItem from '@theme/TabItem';
     ```sh
     docker run \
         --privileged \
-        ghcr.io/opctl/opctl:0.1.58-dind \
+        ghcr.io/soultech67/opctl:0.1.76-dind \
         opctl run github.com/opspec-pkgs/uuid.v4.generate#1.1.0
     ```
 
@@ -62,7 +62,7 @@ import TabItem from '@theme/TabItem';
     docker run \
         -v /var/run/docker.sock:/var/run/docker.sock \
         -v ~/opctl:/root/opctl \
-        ghcr.io/opctl/opctl:0.1.58-dood \
+        ghcr.io/soultech67/opctl:0.1.76-dood \
         opctl run github.com/opspec-pkgs/uuid.v4.generate#1.1.0
     ```
   </TabItem>
@@ -84,7 +84,7 @@ import TabItem from '@theme/TabItem';
         - uses: actions/checkout@v1
 
         - name: Install Opctl
-        run: curl -L https://github.com/opctl/opctl/releases/latest/download/opctl-linux-amd64.tgz | sudo tar -xzv -C /usr/local/bin
+        run: curl -L https://github.com/soultech67/opctl/releases/latest/download/opctl-linux-amd64.tgz | sudo tar -xzv -C /usr/local/bin
         
         - name: Build
         run: opctl run build
@@ -96,7 +96,7 @@ import TabItem from '@theme/TabItem';
     Example .gitlab-ci.yml:
 
     ```yaml
-    image: ghcr.io/opctl/opctl:0.1.58-dind
+    image: ghcr.io/soultech67/opctl:0.1.76-dind
     stages:
     - build
     - deploy
@@ -123,7 +123,7 @@ import TabItem from '@theme/TabItem';
       
        ```json
        "yaml.schemas": {
-         "https://raw.githubusercontent.com/opctl/opctl/main/opspec/opfile/jsonschema.json": "/op.yml"
+         "https://raw.githubusercontent.com/soultech67/opctl/main/opspec/opfile/jsonschema.json": "/op.yml"
        }
        ```
 
@@ -146,14 +146,14 @@ import TabItem from '@theme/TabItem';
     from terminal, run:
 
     ```sh
-    curl -L https://github.com/opctl/opctl/releases/latest/download/opctl-linux-amd64.tgz | sudo tar -xzv -C /usr/local/bin
+    curl -L https://github.com/soultech67/opctl/releases/latest/download/opctl-linux-amd64.tgz | sudo tar -xzv -C /usr/local/bin
     ```
 
     ## Upgrading
 
     from terminal, run:
     ```sh
-    # update to latest release from https://github.com/opctl/opctl/releases
+    # update to latest release from https://github.com/soultech67/opctl/releases
     opctl self-update
     ```
   </TabItem>
@@ -176,7 +176,7 @@ import TabItem from '@theme/TabItem';
     from terminal, run:
 
     ```sh
-    curl -L https://github.com/opctl/opctl/releases/latest/download/opctl-darwin-arm64.tgz | sudo tar -xzv -C /usr/local/bin
+    curl -L https://github.com/soultech67/opctl/releases/latest/download/opctl-darwin-arm64.tgz | sudo tar -xzv -C /usr/local/bin
     ```
 
     ### Intel
@@ -184,14 +184,14 @@ import TabItem from '@theme/TabItem';
     from terminal, run:
 
     ```sh
-    curl -L https://github.com/opctl/opctl/releases/latest/download/opctl-darwin-amd64.tgz | sudo tar -xzv -C /usr/local/bin
+    curl -L https://github.com/soultech67/opctl/releases/latest/download/opctl-darwin-amd64.tgz | sudo tar -xzv -C /usr/local/bin
     ```
 
     ## Upgrading
 
     from terminal, run:
     ```sh
-    # update to latest release from https://github.com/opctl/opctl/releases
+    # update to latest release from https://github.com/soultech67/opctl/releases
     opctl self-update
     ```
   </TabItem>
