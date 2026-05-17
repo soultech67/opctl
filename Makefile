@@ -13,7 +13,7 @@ SRC_BIN := ./cli/opctl-$(GOOS)-$(GOARCH)
 
 .DEFAULT_GOAL := help
 
-.PHONY: build bld install help
+.PHONY: build bld install test release help
 
 build: ## Cross-compile the CLI for all platforms via `opctl run compile`.
 	opctl run -a version=$(VERSION) -a selfUpdateRepo=$(SELF_UPDATE_REPO) compile
@@ -36,6 +36,17 @@ install: ## Delete the running node and copy ./cli/opctl-$(GOOS)-$(GOARCH) to $(
 	@chmod +x $(DEST)
 	@echo "installed $(DEST) (from $(GOOS)/$(GOARCH) build)"
 
+test: ## Run the full test suite via `opctl run test` (PAT minted by `astro auth github`).
+	@command -v astro >/dev/null || { echo "error: 'astro' not on PATH" >&2; exit 1; }
+	opctl run -a githubAccessToken=$$(astro auth github) test
+
+release: ## Run the release op via `opctl run release` (PAT from astro, user from active gh login / soultech67).
+	@command -v astro >/dev/null || { echo "error: 'astro' not on PATH" >&2; exit 1; }
+	@USER=$$(gh api user --jq .login 2>/dev/null || echo soultech67); \
+	 TOKEN=$$(astro auth github); \
+	 echo "release as user=$$USER"; \
+	 opctl run -a github="{\"username\":\"$$USER\",\"accessToken\":\"$$TOKEN\"}" release
+
 help: ## Show this help.
 	@awk 'BEGIN { FS = ":.*##"; printf "Usage:\n  make \033[36m<target>\033[0m  [VAR=value ...]\n\nTargets:\n" } \
 	      /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -45,3 +56,5 @@ help: ## Show this help.
 	@printf "  %-18s %s\n" "GOOS"             "Target OS for install (default: $(GOOS))"
 	@printf "  %-18s %s\n" "GOARCH"           "Target arch for install (default: $(GOARCH))"
 	@printf "  %-18s %s\n" "PREFIX"           "Install dir (default: $(PREFIX))"
+	@printf "\nThe 'test' and 'release' targets mint a short-lived GitHub PAT via 'astro auth github';\n"
+	@printf "'release' also picks the username from 'gh api user', falling back to 'soultech67'.\n"
