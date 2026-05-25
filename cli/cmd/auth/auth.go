@@ -17,6 +17,12 @@ func NewAuthCmd(
 		newAddCmd(
 			nodeConfig,
 		),
+		newListCmd(
+			nodeConfig,
+		),
+		newRemoveCmd(
+			nodeConfig,
+		),
 	)
 
 	return &authCmd

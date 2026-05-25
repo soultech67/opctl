@@ -44,7 +44,7 @@ opctl auth add github.com -u='my-username' -p='my-password'
 				return err
 			}
 
-			return node.AddAuth(
+			if err := node.AddAuth(
 				ctx,
 				model.AddAuthReq{
 					Creds: model.Creds{
@@ -53,7 +53,17 @@ opctl auth add github.com -u='my-username' -p='my-password'
 					},
 					Resources: args[0],
 				},
+			); err != nil {
+				return err
+			}
+
+			fmt.Fprintf(
+				cmd.OutOrStdout(),
+				"Stored auth for %s (user: %s)\n",
+				args[0],
+				addUsername,
 			)
+			return nil
 		},
 	}
 	addCmd.Flags().StringVarP(&addUsername, "username", "u", "", "Username")

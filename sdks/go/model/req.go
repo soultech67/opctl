@@ -11,6 +11,12 @@ type AddAuthReq struct {
 	Creds
 }
 
+// RemoveAuthReq holds data for removing previously-stored source credentials.
+type RemoveAuthReq struct {
+	// Resources designates which auth entry to remove, by its exact stored resources/prefix string.
+	Resources string
+}
+
 type EventFilter struct {
 	// filter to events from these root op id's
 	Roots []string

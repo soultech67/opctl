@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	addsFakes "github.com/opctl/opctl/sdks/go/node/api/handler/auths/adds/fakes"
+	listsFakes "github.com/opctl/opctl/sdks/go/node/api/handler/auths/lists/fakes"
+	removesFakes "github.com/opctl/opctl/sdks/go/node/api/handler/auths/removes/fakes"
 	nodeFakes "github.com/opctl/opctl/sdks/go/node/fakes"
 
 	. "github.com/onsi/ginkgo"
@@ -20,8 +22,8 @@ var _ = Context("Handler", func() {
 		})
 	})
 	Context("Handle", func() {
-		Context("next URL path segment isn't adds", func() {
-			It("should return expected result", func() {
+		Context("next URL path segment isn't a known auths subresource", func() {
+			It("should return StatusNotFound", func() {
 				/* arrange */
 				objectUnderTest := _handler{}
 				providedHTTPResp := httptest.NewRecorder()
@@ -39,7 +41,7 @@ var _ = Context("Handler", func() {
 			})
 		})
 		Context("next URL path segment is adds", func() {
-			It("should call refHandler.Handle w/ expected args", func() {
+			It("should call addsHandler.Handle w/ expected args", func() {
 				/* arrange */
 				fakeAddsHandler := new(addsFakes.FakeHandler)
 
@@ -64,6 +66,60 @@ var _ = Context("Handler", func() {
 				Expect(actualHTTPReq.URL.Path).To(Equal(expectedURLPath))
 
 				// this works because our URL path set mutates the httpRequest
+				Expect(actualHTTPReq).To(Equal(providedHTTPReq))
+			})
+		})
+		Context("next URL path segment is lists", func() {
+			It("should call listsHandler.Handle w/ expected args", func() {
+				/* arrange */
+				fakeListsHandler := new(listsFakes.FakeHandler)
+
+				objectUnderTest := _handler{
+					listsHandler: fakeListsHandler,
+				}
+
+				providedPath := "lists/dummy"
+				providedHTTPReq, err := http.NewRequest("dummyMethod", providedPath, nil)
+				if err != nil {
+					panic(err.Error())
+				}
+
+				expectedURLPath := strings.SplitN(providedPath, "/", 2)[1]
+
+				/* act */
+				objectUnderTest.Handle(httptest.NewRecorder(), providedHTTPReq)
+
+				/* assert */
+				_, actualHTTPReq := fakeListsHandler.HandleArgsForCall(0)
+
+				Expect(actualHTTPReq.URL.Path).To(Equal(expectedURLPath))
+				Expect(actualHTTPReq).To(Equal(providedHTTPReq))
+			})
+		})
+		Context("next URL path segment is removes", func() {
+			It("should call removesHandler.Handle w/ expected args", func() {
+				/* arrange */
+				fakeRemovesHandler := new(removesFakes.FakeHandler)
+
+				objectUnderTest := _handler{
+					removesHandler: fakeRemovesHandler,
+				}
+
+				providedPath := "removes/dummy"
+				providedHTTPReq, err := http.NewRequest("dummyMethod", providedPath, nil)
+				if err != nil {
+					panic(err.Error())
+				}
+
+				expectedURLPath := strings.SplitN(providedPath, "/", 2)[1]
+
+				/* act */
+				objectUnderTest.Handle(httptest.NewRecorder(), providedHTTPReq)
+
+				/* assert */
+				_, actualHTTPReq := fakeRemovesHandler.HandleArgsForCall(0)
+
+				Expect(actualHTTPReq.URL.Path).To(Equal(expectedURLPath))
 				Expect(actualHTTPReq).To(Equal(providedHTTPReq))
 			})
 		})

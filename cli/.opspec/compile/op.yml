@@ -8,7 +8,7 @@ inputs:
   selfUpdateRepo:
     string:
       default: soultech67/opctl
-      description: GitHub owner/repo used by self-update to find releases.
+      description: GitHub owner/repo used by self-update and update hints to find releases.
   goBuildCachePath:
     string:
       description: Path relative to HOME dir, to use for go build cache e.g., on macOS, Library/Caches/go-build; on Linux, .cache/go-build

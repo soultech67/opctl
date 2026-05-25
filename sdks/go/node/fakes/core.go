@@ -62,6 +62,19 @@ type FakeCore struct {
 	killOpReturnsOnCall map[int]struct {
 		result1 error
 	}
+	ListAuthsStub        func(context.Context) ([]model.Auth, error)
+	listAuthsMutex       sync.RWMutex
+	listAuthsArgsForCall []struct {
+		arg1 context.Context
+	}
+	listAuthsReturns struct {
+		result1 []model.Auth
+		result2 error
+	}
+	listAuthsReturnsOnCall map[int]struct {
+		result1 []model.Auth
+		result2 error
+	}
 	ListDescendantsStub        func(context.Context, model.ListDescendantsReq) ([]*model.DirEntry, error)
 	listDescendantsMutex       sync.RWMutex
 	listDescendantsArgsForCall []struct {
@@ -85,6 +98,18 @@ type FakeCore struct {
 		result1 error
 	}
 	livenessReturnsOnCall map[int]struct {
+		result1 error
+	}
+	RemoveAuthStub        func(context.Context, model.RemoveAuthReq) error
+	removeAuthMutex       sync.RWMutex
+	removeAuthArgsForCall []struct {
+		arg1 context.Context
+		arg2 model.RemoveAuthReq
+	}
+	removeAuthReturns struct {
+		result1 error
+	}
+	removeAuthReturnsOnCall map[int]struct {
 		result1 error
 	}
 	ResolveDataStub        func(context.Context, string, *model.Creds) (model.DataHandle, error)
@@ -127,15 +152,16 @@ func (fake *FakeCore) AddAuth(arg1 context.Context, arg2 model.AddAuthReq) error
 		arg1 context.Context
 		arg2 model.AddAuthReq
 	}{arg1, arg2})
+	stub := fake.AddAuthStub
+	fakeReturns := fake.addAuthReturns
 	fake.recordInvocation("AddAuth", []interface{}{arg1, arg2})
 	fake.addAuthMutex.Unlock()
-	if fake.AddAuthStub != nil {
-		return fake.AddAuthStub(arg1, arg2)
+	if stub != nil {
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.addAuthReturns
 	return fakeReturns.result1
 }
 
@@ -188,15 +214,16 @@ func (fake *FakeCore) GetData(arg1 context.Context, arg2 model.GetDataReq) (mode
 		arg1 context.Context
 		arg2 model.GetDataReq
 	}{arg1, arg2})
+	stub := fake.GetDataStub
+	fakeReturns := fake.getDataReturns
 	fake.recordInvocation("GetData", []interface{}{arg1, arg2})
 	fake.getDataMutex.Unlock()
-	if fake.GetDataStub != nil {
-		return fake.GetDataStub(arg1, arg2)
+	if stub != nil {
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.getDataReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -252,15 +279,16 @@ func (fake *FakeCore) GetEventStream(arg1 context.Context, arg2 *model.GetEventS
 		arg1 context.Context
 		arg2 *model.GetEventStreamReq
 	}{arg1, arg2})
+	stub := fake.GetEventStreamStub
+	fakeReturns := fake.getEventStreamReturns
 	fake.recordInvocation("GetEventStream", []interface{}{arg1, arg2})
 	fake.getEventStreamMutex.Unlock()
-	if fake.GetEventStreamStub != nil {
-		return fake.GetEventStreamStub(arg1, arg2)
+	if stub != nil {
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.getEventStreamReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -316,15 +344,16 @@ func (fake *FakeCore) KillOp(arg1 context.Context, arg2 model.KillOpReq) error {
 		arg1 context.Context
 		arg2 model.KillOpReq
 	}{arg1, arg2})
+	stub := fake.KillOpStub
+	fakeReturns := fake.killOpReturns
 	fake.recordInvocation("KillOp", []interface{}{arg1, arg2})
 	fake.killOpMutex.Unlock()
-	if fake.KillOpStub != nil {
-		return fake.KillOpStub(arg1, arg2)
+	if stub != nil {
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.killOpReturns
 	return fakeReturns.result1
 }
 
@@ -370,6 +399,70 @@ func (fake *FakeCore) KillOpReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
+func (fake *FakeCore) ListAuths(arg1 context.Context) ([]model.Auth, error) {
+	fake.listAuthsMutex.Lock()
+	ret, specificReturn := fake.listAuthsReturnsOnCall[len(fake.listAuthsArgsForCall)]
+	fake.listAuthsArgsForCall = append(fake.listAuthsArgsForCall, struct {
+		arg1 context.Context
+	}{arg1})
+	stub := fake.ListAuthsStub
+	fakeReturns := fake.listAuthsReturns
+	fake.recordInvocation("ListAuths", []interface{}{arg1})
+	fake.listAuthsMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeCore) ListAuthsCallCount() int {
+	fake.listAuthsMutex.RLock()
+	defer fake.listAuthsMutex.RUnlock()
+	return len(fake.listAuthsArgsForCall)
+}
+
+func (fake *FakeCore) ListAuthsCalls(stub func(context.Context) ([]model.Auth, error)) {
+	fake.listAuthsMutex.Lock()
+	defer fake.listAuthsMutex.Unlock()
+	fake.ListAuthsStub = stub
+}
+
+func (fake *FakeCore) ListAuthsArgsForCall(i int) context.Context {
+	fake.listAuthsMutex.RLock()
+	defer fake.listAuthsMutex.RUnlock()
+	argsForCall := fake.listAuthsArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeCore) ListAuthsReturns(result1 []model.Auth, result2 error) {
+	fake.listAuthsMutex.Lock()
+	defer fake.listAuthsMutex.Unlock()
+	fake.ListAuthsStub = nil
+	fake.listAuthsReturns = struct {
+		result1 []model.Auth
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeCore) ListAuthsReturnsOnCall(i int, result1 []model.Auth, result2 error) {
+	fake.listAuthsMutex.Lock()
+	defer fake.listAuthsMutex.Unlock()
+	fake.ListAuthsStub = nil
+	if fake.listAuthsReturnsOnCall == nil {
+		fake.listAuthsReturnsOnCall = make(map[int]struct {
+			result1 []model.Auth
+			result2 error
+		})
+	}
+	fake.listAuthsReturnsOnCall[i] = struct {
+		result1 []model.Auth
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *FakeCore) ListDescendants(arg1 context.Context, arg2 model.ListDescendantsReq) ([]*model.DirEntry, error) {
 	fake.listDescendantsMutex.Lock()
 	ret, specificReturn := fake.listDescendantsReturnsOnCall[len(fake.listDescendantsArgsForCall)]
@@ -377,15 +470,16 @@ func (fake *FakeCore) ListDescendants(arg1 context.Context, arg2 model.ListDesce
 		arg1 context.Context
 		arg2 model.ListDescendantsReq
 	}{arg1, arg2})
+	stub := fake.ListDescendantsStub
+	fakeReturns := fake.listDescendantsReturns
 	fake.recordInvocation("ListDescendants", []interface{}{arg1, arg2})
 	fake.listDescendantsMutex.Unlock()
-	if fake.ListDescendantsStub != nil {
-		return fake.ListDescendantsStub(arg1, arg2)
+	if stub != nil {
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.listDescendantsReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -440,15 +534,16 @@ func (fake *FakeCore) Liveness(arg1 context.Context) error {
 	fake.livenessArgsForCall = append(fake.livenessArgsForCall, struct {
 		arg1 context.Context
 	}{arg1})
+	stub := fake.LivenessStub
+	fakeReturns := fake.livenessReturns
 	fake.recordInvocation("Liveness", []interface{}{arg1})
 	fake.livenessMutex.Unlock()
-	if fake.LivenessStub != nil {
-		return fake.LivenessStub(arg1)
+	if stub != nil {
+		return stub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.livenessReturns
 	return fakeReturns.result1
 }
 
@@ -494,6 +589,68 @@ func (fake *FakeCore) LivenessReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
+func (fake *FakeCore) RemoveAuth(arg1 context.Context, arg2 model.RemoveAuthReq) error {
+	fake.removeAuthMutex.Lock()
+	ret, specificReturn := fake.removeAuthReturnsOnCall[len(fake.removeAuthArgsForCall)]
+	fake.removeAuthArgsForCall = append(fake.removeAuthArgsForCall, struct {
+		arg1 context.Context
+		arg2 model.RemoveAuthReq
+	}{arg1, arg2})
+	stub := fake.RemoveAuthStub
+	fakeReturns := fake.removeAuthReturns
+	fake.recordInvocation("RemoveAuth", []interface{}{arg1, arg2})
+	fake.removeAuthMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeCore) RemoveAuthCallCount() int {
+	fake.removeAuthMutex.RLock()
+	defer fake.removeAuthMutex.RUnlock()
+	return len(fake.removeAuthArgsForCall)
+}
+
+func (fake *FakeCore) RemoveAuthCalls(stub func(context.Context, model.RemoveAuthReq) error) {
+	fake.removeAuthMutex.Lock()
+	defer fake.removeAuthMutex.Unlock()
+	fake.RemoveAuthStub = stub
+}
+
+func (fake *FakeCore) RemoveAuthArgsForCall(i int) (context.Context, model.RemoveAuthReq) {
+	fake.removeAuthMutex.RLock()
+	defer fake.removeAuthMutex.RUnlock()
+	argsForCall := fake.removeAuthArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *FakeCore) RemoveAuthReturns(result1 error) {
+	fake.removeAuthMutex.Lock()
+	defer fake.removeAuthMutex.Unlock()
+	fake.RemoveAuthStub = nil
+	fake.removeAuthReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeCore) RemoveAuthReturnsOnCall(i int, result1 error) {
+	fake.removeAuthMutex.Lock()
+	defer fake.removeAuthMutex.Unlock()
+	fake.RemoveAuthStub = nil
+	if fake.removeAuthReturnsOnCall == nil {
+		fake.removeAuthReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.removeAuthReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
 func (fake *FakeCore) ResolveData(arg1 context.Context, arg2 string, arg3 *model.Creds) (model.DataHandle, error) {
 	fake.resolveDataMutex.Lock()
 	ret, specificReturn := fake.resolveDataReturnsOnCall[len(fake.resolveDataArgsForCall)]
@@ -502,15 +659,16 @@ func (fake *FakeCore) ResolveData(arg1 context.Context, arg2 string, arg3 *model
 		arg2 string
 		arg3 *model.Creds
 	}{arg1, arg2, arg3})
+	stub := fake.ResolveDataStub
+	fakeReturns := fake.resolveDataReturns
 	fake.recordInvocation("ResolveData", []interface{}{arg1, arg2, arg3})
 	fake.resolveDataMutex.Unlock()
-	if fake.ResolveDataStub != nil {
-		return fake.ResolveDataStub(arg1, arg2, arg3)
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.resolveDataReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -566,15 +724,16 @@ func (fake *FakeCore) StartOp(arg1 context.Context, arg2 model.StartOpReq) (stri
 		arg1 context.Context
 		arg2 model.StartOpReq
 	}{arg1, arg2})
+	stub := fake.StartOpStub
+	fakeReturns := fake.startOpReturns
 	fake.recordInvocation("StartOp", []interface{}{arg1, arg2})
 	fake.startOpMutex.Unlock()
-	if fake.StartOpStub != nil {
-		return fake.StartOpStub(arg1, arg2)
+	if stub != nil {
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.startOpReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -626,22 +785,6 @@ func (fake *FakeCore) StartOpReturnsOnCall(i int, result1 string, result2 error)
 func (fake *FakeCore) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.addAuthMutex.RLock()
-	defer fake.addAuthMutex.RUnlock()
-	fake.getDataMutex.RLock()
-	defer fake.getDataMutex.RUnlock()
-	fake.getEventStreamMutex.RLock()
-	defer fake.getEventStreamMutex.RUnlock()
-	fake.killOpMutex.RLock()
-	defer fake.killOpMutex.RUnlock()
-	fake.listDescendantsMutex.RLock()
-	defer fake.listDescendantsMutex.RUnlock()
-	fake.livenessMutex.RLock()
-	defer fake.livenessMutex.RUnlock()
-	fake.resolveDataMutex.RLock()
-	defer fake.resolveDataMutex.RUnlock()
-	fake.startOpMutex.RLock()
-	defer fake.startOpMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

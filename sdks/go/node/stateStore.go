@@ -28,6 +28,9 @@ type stateStore interface {
 
 	// TryGetCreds returns creds for a ref if any exist
 	TryGetAuth(resource string) *model.Auth
+
+	// ListAuths returns every stored auth entry
+	ListAuths() []model.Auth
 }
 
 func newStateStore(
@@ -64,6 +67,8 @@ func newStateStore(
 			switch {
 			case event.AuthAdded != nil:
 				stateStore.applyAuthAdded(*event.AuthAdded)
+			case event.AuthRemoved != nil:
+				stateStore.applyAuthRemoved(*event.AuthRemoved)
 			case event.CallEnded != nil:
 				stateStore.applyCallEnded(*event.CallEnded)
 			case event.CallStarted != nil:
@@ -134,6 +139,14 @@ func (ss *_stateStore) applyAuthAdded(authAdded model.AuthAdded) error {
 	})
 }
 
+func (ss *_stateStore) applyAuthRemoved(authRemoved model.AuthRemoved) error {
+	return ss.db.Update(func(txn *badger.Txn) error {
+		return txn.Delete(
+			[]byte(ss.authsByResourcesKeyPrefix + strings.ToLower(authRemoved.Resources)),
+		)
+	})
+}
+
 func (ss *_stateStore) applyCallEnded(callEnded model.CallEnded) {
 	if callEnded.Outcome != model.OpOutcomeFailed {
 		return
@@ -182,6 +195,31 @@ func (ss *_stateStore) TryGet(
 	}
 
 	return nil
+}
+
+func (ss *_stateStore) ListAuths() []model.Auth {
+	auths := []model.Auth{}
+	ss.db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		it := txn.NewIterator(opts)
+		defer it.Close()
+
+		prefixBytes := []byte(ss.authsByResourcesKeyPrefix)
+		for it.Seek(prefixBytes); it.ValidForPrefix(prefixBytes); it.Next() {
+			it.Item().Value(func(value []byte) error {
+				auth := model.Auth{}
+				if err := json.Unmarshal(value, &auth); err != nil {
+					return err
+				}
+				auths = append(auths, auth)
+				return nil
+			})
+		}
+
+		return nil
+	})
+
+	return auths
 }
 
 func (ss *_stateStore) TryGetAuth(

@@ -5,6 +5,7 @@ import "time"
 // Event represents a distributed state change
 type Event struct {
 	AuthAdded                *AuthAdded                `json:"authAdded,omitempty"`
+	AuthRemoved              *AuthRemoved              `json:"authRemoved,omitempty"`
 	CallEnded                *CallEnded                `json:"callEnded,omitempty"`
 	CallStarted              *CallStarted              `json:"callStarted,omitempty"`
 	ContainerStdErrWrittenTo *ContainerStdErrWrittenTo `json:"containerStdErrWrittenTo,omitempty"`
@@ -22,6 +23,11 @@ const (
 // AuthAdded represents auth was added for external resources
 type AuthAdded struct {
 	Auth Auth `json:"auth"`
+}
+
+// AuthRemoved represents auth was removed for external resources
+type AuthRemoved struct {
+	Resources string `json:"resources"`
 }
 
 // CallKillRequested represents a request was made to kill an op; a CallEnded event may follow

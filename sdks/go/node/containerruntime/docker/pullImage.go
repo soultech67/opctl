@@ -60,9 +60,10 @@ func pullImage(
 		),
 	}
 
-	if imagePullCreds != nil &&
+	authenticated := imagePullCreds != nil &&
 		imagePullCreds.Username != "" &&
-		imagePullCreds.Password != "" {
+		imagePullCreds.Password != ""
+	if authenticated {
 		var err error
 		imagePullOptions.RegistryAuth, err = constructRegistryAuth(
 			imagePullCreds.Username,
@@ -72,6 +73,22 @@ func pullImage(
 			return err
 		}
 	}
+
+	var pullAuthMsg string
+	if authenticated {
+		pullAuthMsg = fmt.Sprintf("Pulling %s as %s\n", imageRef, imagePullCreds.Username)
+	} else {
+		pullAuthMsg = fmt.Sprintf("Pulling %s anonymously (no stored auth matched; add via `opctl auth add`)\n", imageRef)
+	}
+	eventPublisher.Publish(model.Event{
+		Timestamp: time.Now().UTC(),
+		ContainerStdOutWrittenTo: &model.ContainerStdOutWrittenTo{
+			Data:        []byte(pullAuthMsg),
+			OpRef:       containerCall.OpPath,
+			ContainerID: containerID,
+			RootCallID:  rootCallID,
+		},
+	})
 
 	imagePullResp, err := dockerClient.ImagePull(
 		ctx,

@@ -17,6 +17,10 @@ inputs:
             type: string
         required: [accessToken, username]
       description: configuration required to interact w/ github
+  selfUpdateRepo:
+    string:
+      default: soultech67/opctl
+      description: GitHub owner/repo baked into release binaries for self-update and update hints.
   HOME:
     dir:
       description: Home directory of caller; used to access go modules
@@ -55,6 +59,7 @@ run:
           inputs:
             HOME:
             version: $(latestRelease.version)
+            selfUpdateRepo:
       - parallel:
           - op:
               ref: $(./to-ghcr)
