@@ -87,6 +87,8 @@ func (cr _containerRuntime) ListContainersByLabels(
 			ID:        dockerContainer.ID,
 			Name:      getListedContainerDisplayName(dockerContainer),
 			Image:     dockerContainer.Image,
+			State:     dockerContainer.State,
+			Status:    dockerContainer.Status,
 			StartedAt: startedAt,
 			Labels:    cloneStringMap(dockerContainer.Labels),
 		})
