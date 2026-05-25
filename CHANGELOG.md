@@ -15,6 +15,8 @@ accordance with
 - `opctl auth add` now prints a confirmation line showing the stored resources and username
 - Image pull output now states whether the pull is authenticated (and as which username) or anonymous, so silent fallbacks to anonymous pulls (and the rate limits they incur) are visible
 - New `make clean` target removes the cross-compiled CLI binaries under `cli/` and any orphaned opctl-managed containers in Docker `Created` state
+- `make install` now backs up the currently-installed `opctl` to `opctl-<version>` (in the same prefix dir) before overwriting it, but only if no `opctl-*` backup already exists — so the *original* pre-fork release is preserved as the restore target across repeated dev installs. Version is read via `opctl -v`; dev builds without ldflags fall back to `opctl-snapshot-<timestamp>`
+- New `make uninstall` target restores the highest-version `opctl-*` backup (semver-sorted via `sort -V`) over the current binary, after killing the running daemon. Errors out if no backup is present, with a pointer to `opctl self-update` for a fresh release
 - New `opctl container prune` command removes all opctl-managed containers that are not currently running (created, exited, dead, restarting); mirrors `docker container prune` and accepts `-f/--force` to skip the confirmation prompt
 - `opctl container ls` now includes a `STATUS` column (e.g. `Up 5 minutes`, `Exited (0) 2 hours ago`) so it's obvious which containers are actually running
 - `opctl container ls -i/--images` adds the IMAGE column to the table (hidden by default because long image refs were the main cause of wrapped rows)

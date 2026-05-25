@@ -4,7 +4,7 @@ set -eu
 target=${1:-}
 
 usage() {
-  echo "usage: $0 install" >&2
+  echo "usage: $0 {install|uninstall}" >&2
   exit 2
 }
 
@@ -205,6 +205,89 @@ copy_opctl() {
   sudo chmod +x "$dest"
 }
 
+# extract_opctl_version invokes "<bin> -v" to read the version string baked in
+# via -ldflags at compile time. Returns success and prints the version on
+# stdout, or returns failure for dev builds without ldflags (where -v doesn't
+# exist because cobra hides the flag when the Version field is empty).
+extract_opctl_version() {
+  bin=$1
+  raw=$("$bin" -v 2>/dev/null) || return 1
+  # strip whitespace; opctl's version template appends a newline
+  version=$(printf '%s' "$raw" | tr -d '[:space:]')
+  if [ -z "$version" ]; then
+    return 1
+  fi
+  printf '%s' "$version"
+}
+
+# any_opctl_backup_exists reports whether the prefix directory already holds
+# any opctl-<version> file. Used to enforce the "back up only if no backup is
+# present" rule — preserves the ORIGINAL pre-fork release as the restore
+# target across repeated `make install` invocations.
+any_opctl_backup_exists() {
+  prefix=$1
+  for candidate in "$prefix"/opctl-*; do
+    if [ -f "$candidate" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+# backup_existing_opctl copies the currently-installed opctl to opctl-<version>
+# inside the same prefix, but only if no opctl-<version> backup already exists.
+# Caller-supplied $existing is the absolute path to the currently-installed
+# binary (or empty if opctl isn't on PATH); $prefix is the directory it lives
+# in (or would).
+backup_existing_opctl() {
+  existing=$1
+  prefix=$2
+
+  if [ -z "$existing" ] || [ ! -f "$existing" ]; then
+    return 0
+  fi
+
+  if any_opctl_backup_exists "$prefix"; then
+    existing_backup=$(ls "$prefix"/opctl-* 2>/dev/null | head -1)
+    echo "backup already exists ($existing_backup); leaving as-is"
+    return 0
+  fi
+
+  if version=$(extract_opctl_version "$existing"); then
+    backup_name=opctl-$version
+  else
+    backup_name=opctl-snapshot-$(date +%Y%m%d-%H%M%S)
+    echo "could not determine current opctl version (likely a dev build); using $backup_name"
+  fi
+  backup_path=$prefix/$backup_name
+
+  echo "backing up $existing to $backup_path"
+  if can_install_without_sudo "$prefix" "$backup_path"; then
+    cp "$existing" "$backup_path"
+  else
+    ensure_sudo "$backup_path"
+    sudo cp "$existing" "$backup_path"
+  fi
+}
+
+# find_highest_opctl_backup prints the absolute path to the highest-version
+# opctl-* backup in $prefix (semver-sorted via `sort -V`). Empty stdout if
+# none exist.
+find_highest_opctl_backup() {
+  prefix=$1
+  candidates=
+  for candidate in "$prefix"/opctl-*; do
+    if [ -f "$candidate" ]; then
+      candidates="$candidates$candidate
+"
+    fi
+  done
+  if [ -z "$candidates" ]; then
+    return 0
+  fi
+  printf '%s' "$candidates" | sort -V | tail -1
+}
+
 install_opctl() {
   goos=${GOOS:-$(uname -s | tr '[:upper:]' '[:lower:]')}
   raw_arch=$(uname -m)
@@ -243,6 +326,12 @@ install_opctl() {
     echo "no opctl found on PATH and neither ~/bin nor ~/.local/bin exists; creating $prefix"
   fi
 
+  # Back up the currently-installed binary (once) before overwriting it.
+  # `make uninstall` restores from this backup. Only the first install creates
+  # the backup so subsequent dev installs don't clobber the pristine release
+  # that's the restore target.
+  backup_existing_opctl "$existing_opctl" "$prefix"
+
   copy_opctl "$src_bin" "$prefix" "$dest"
   echo "installed $dest (from $goos/$goarch build)"
 
@@ -251,9 +340,47 @@ install_opctl() {
   fi
 }
 
+uninstall_opctl() {
+  existing_opctl=$(which opctl 2>/dev/null || true)
+  if [ -z "$existing_opctl" ] || [ ! -f "$existing_opctl" ]; then
+    echo "error: opctl not found on PATH; nothing to uninstall" >&2
+    exit 1
+  fi
+
+  prefix=$(dirname "$existing_opctl")
+  dest=$prefix/opctl
+
+  backup=$(find_highest_opctl_backup "$prefix")
+  if [ -z "$backup" ]; then
+    echo "error: no opctl-* backup found in $prefix; nothing to restore" >&2
+    echo "       to fetch a fresh release run: opctl self-update" >&2
+    exit 1
+  fi
+
+  echo "running 'sudo $existing_opctl node delete' (requires root)..."
+  sudo "$existing_opctl" node delete
+
+  echo "restoring $backup to $dest"
+  if can_install_without_sudo "$prefix" "$dest"; then
+    cp "$backup" "$dest"
+    chmod +x "$dest"
+  else
+    ensure_sudo "$dest"
+    sudo cp "$backup" "$dest"
+    sudo chmod +x "$dest"
+  fi
+
+  restored_version=$(extract_opctl_version "$dest" 2>/dev/null || echo "?")
+  echo "restored opctl @ $dest (version: $restored_version)"
+  echo "backup left in place at $backup; remove it manually if you want a clean state"
+}
+
 case "$target" in
   install)
     install_opctl
+    ;;
+  uninstall)
+    uninstall_opctl
     ;;
   *)
     usage
