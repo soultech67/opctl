@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/opctl/opctl/sdks/go/model"
@@ -42,12 +43,19 @@ func (ckr _callKiller) Kill(
 	callID string,
 	rootCallID string,
 ) {
-	ckr.containerRuntime.DeleteContainerIfExists(
-		ctx,
-		callID,
-	)
+	log.Printf("[opctl kill] callKiller.Kill enter: callID=%s rootCallID=%s", callID, rootCallID)
+	startedAt := time.Now()
 
-	for _, childCallGraph := range ckr.stateStore.ListWithParentID(callID) {
+	if err := ckr.containerRuntime.DeleteContainerIfExists(ctx, callID); err != nil {
+		log.Printf("[opctl kill] DeleteContainerIfExists failed in %s: callID=%s err=%v",
+			time.Since(startedAt), callID, err)
+	}
+
+	children := ckr.stateStore.ListWithParentID(callID)
+	log.Printf("[opctl kill] callKiller.Kill propagating to %d child(ren): callID=%s elapsed=%s",
+		len(children), callID, time.Since(startedAt))
+
+	for _, childCallGraph := range children {
 		ckr.eventPublisher.Publish(
 			model.Event{
 				CallKillRequested: &model.CallKillRequested{
@@ -60,4 +68,6 @@ func (ckr _callKiller) Kill(
 			},
 		)
 	}
+
+	log.Printf("[opctl kill] callKiller.Kill exit in %s: callID=%s", time.Since(startedAt), callID)
 }

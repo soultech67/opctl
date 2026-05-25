@@ -15,23 +15,34 @@ func deleteContainer(
 	dockerClient dockerClientPkg.CommonAPIClient,
 	dockerContainerName string,
 ) error {
+	// ContainerStop's stopTimeout is Docker's *in-container* grace period;
+	// the API call itself is bounded by our mutation timeout to prevent it
+	// blocking forever when Docker is wedged.
 	stopTimeout := 3
-	dockerClient.ContainerStop(
-		ctx,
-		dockerContainerName,
-		container.StopOptions{
-			Timeout: &stopTimeout,
-		},
-	)
+	stopCtx, cancelStop := withDockerTimeout(ctx, dockerMutationTimeout())
+	_ = instrumentedDockerCall("ContainerStop", dockerContainerName, func() error {
+		return dockerClient.ContainerStop(
+			stopCtx,
+			dockerContainerName,
+			container.StopOptions{
+				Timeout: &stopTimeout,
+			},
+		)
+	})
+	cancelStop()
 
-	err := dockerClient.ContainerRemove(
-		ctx,
-		dockerContainerName,
-		container.RemoveOptions{
-			RemoveVolumes: true,
-			Force:         true,
-		},
-	)
+	removeCtx, cancelRemove := withDockerTimeout(ctx, dockerMutationTimeout())
+	defer cancelRemove()
+	err := instrumentedDockerCall("ContainerRemove", dockerContainerName, func() error {
+		return dockerClient.ContainerRemove(
+			removeCtx,
+			dockerContainerName,
+			container.RemoveOptions{
+				RemoveVolumes: true,
+				Force:         true,
+			},
+		)
+	})
 	if err != nil {
 		if isContainerDeleteAlreadyDone(err) {
 			return nil

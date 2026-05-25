@@ -5,6 +5,7 @@ package node
 
 import (
 	"context"
+	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -96,6 +97,8 @@ func New(
 			switch {
 			case event.CallKillRequested != nil:
 				req := event.CallKillRequested.Request
+				log.Printf("[opctl kill] core: CallKillRequested → callKiller.Kill: opID=%s rootCallID=%s",
+					req.OpID, req.RootCallID)
 				callKiller.Kill(
 					ctx,
 					req.OpID,

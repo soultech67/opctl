@@ -4,6 +4,40 @@ All notable changes to this project will be documented in this file in
 accordance with
 [![keepachangelog 1.0.0](https://img.shields.io/badge/keepachangelog-1.0.0-brightgreen.svg)](http://keepachangelog.com/en/1.0.0/)
 
+## [0.1.78] - 2026-05-17
+
+### Added
+
+- Successful CLI commands now print a cached update hint when a newer fork release is available
+- Update-hint release checks use the same build-time GitHub owner/repo as `self-update`
+- New `opctl auth list` (alias `ls`) command shows stored default auth entries (resources + usernames; passwords are not printed)
+- New `opctl auth remove RESOURCES` (alias `rm`) command removes a previously-stored auth entry by its resources prefix
+- `opctl auth add` now prints a confirmation line showing the stored resources and username
+- Image pull output now states whether the pull is authenticated (and as which username) or anonymous, so silent fallbacks to anonymous pulls (and the rate limits they incur) are visible
+- New `make clean` target removes the cross-compiled CLI binaries under `cli/` and any orphaned opctl-managed containers in Docker `Created` state
+- New `opctl container prune` command removes all opctl-managed containers that are not currently running (created, exited, dead, restarting); mirrors `docker container prune` and accepts `-f/--force` to skip the confirmation prompt
+- `opctl container ls` now includes a `STATUS` column (e.g. `Up 5 minutes`, `Exited (0) 2 hours ago`) so it's obvious which containers are actually running
+- `opctl container ls -i/--images` adds the IMAGE column to the table (hidden by default because long image refs were the main cause of wrapped rows)
+- `opctl container ls -v/--verbose` prints the `DELETE LABELS` filters as a separate section below the table, one block per container, suitable for copy-paste into `opctl container delete --label`
+- Up-front Docker `Ping` health check on container-runtime construction and at the top of every `RunContainer`; if Docker is unresponsive the op fails fast (within ~5s) with an actionable "try `docker info` or restart Docker Desktop" message instead of blocking inside `ContainerCreate`
+- Per-call timeouts on every Docker API call (Ping 5s, Inspect/List 10s, Create/Start/Stop/Remove/NetworkCreate/NetworkRemove 20s). `ContainerWait` and `ImagePull` remain untimed by design (long-running on purpose). Scale all timeouts with `OPCTL_DOCKER_TIMEOUT_MULTIPLIER=2.5` for slow CI/underpowered machines
+- Deferred per-container cleanup is now bounded (30s default, multiplier-scaled). When cleanup exceeds its budget the daemon publishes a `ContainerStdErrWrittenTo` event surfacing `warning: cleanup of container <name> timed out after <duration> — Docker may be unresponsive`, so a wedged Docker no longer silently keeps the CLI spinning forever waiting for a `CallEnded` event that will never fire
+- `opctl run` now emits a one-shot warning when no events arrive from the daemon for 30s, pointing the user at `docker info` and a Docker Desktop restart as the recovery path
+- Kill-path instrumentation: the daemon now logs `[opctl kill]` lines at each cleanup step (KillOp received, callKiller.Kill enter/exit with duration, child-propagation count, DeleteContainerIfExists timing) and `[opctl docker]` lines on every Docker call timeout/cancel, so the next time `Ctrl+C` leaves Docker in a bad state we have a paper trail to debug from. Per-call success timings are also available when `OPCTL_DEBUG_DOCKER=1` is set
+- The daemon spawn now forwards `OPCTL_DEBUG_DOCKER` and `OPCTL_DOCKER_TIMEOUT_MULTIPLIER` from the calling shell so these tuning vars can be set in the environment without requiring command-line flags. Note: the daemon is long-lived; `opctl node kill` is required for an env change to take effect
+
+### Changed
+
+- Release ops now pass the self-update repository through compile so published binaries consistently target fork releases
+- Compile and Makefile guidance now describe the repository setting as shared by self-update and update hints
+- `make build` / `make bld` now warns at the end when opctl-managed containers in `Created` state grow during the build (or already exist), with a pointer to `make clean`; failed builds frequently leak these and they can block subsequent host file operations on macOS Docker Desktop
+- `opctl container ls` now shows only running containers by default, mirroring `docker ps` semantics; pass `-a/--all` to include stopped/created/other non-running containers (the prior all-states behavior)
+- `opctl container ls` table no longer interleaves per-container `DELETE LABELS` sub-rows, which were breaking column alignment whenever a long image ref or label value caused the terminal to wrap; the labels section is now opt-in via `-v/--verbose` and prints below the table
+
+### Fixed
+
+- Local node startup now repairs ownership of opctl data-dir entries left root-owned by prior sudo'd invocations, so subsequent non-root opctl runs can read and traverse them
+
 ## [0.1.77] - 2026-05-17
 
 ### Added

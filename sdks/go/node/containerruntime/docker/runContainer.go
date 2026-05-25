@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"time"
 
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	dockerClientPkg "github.com/docker/docker/client"
@@ -55,6 +57,12 @@ func (cr _runContainer) RunContainer(
 	defer stdout.Close()
 	defer stderr.Close()
 
+	// Probe Docker once at op start. A wedged daemon fails fast here with a
+	// clear error event instead of blocking inside ContainerCreate below.
+	if err := pingDocker(ctx, cr.dockerClient); err != nil {
+		return nil, fmt.Errorf("docker daemon not responding: %w; try `docker info` or restart Docker Desktop", err)
+	}
+
 	// ensure user defined network exists to allow inter container resolution via name
 	// @TODO: remove when socket outputs supported
 	if err := ensureNetworkExists(
@@ -69,9 +77,30 @@ func (cr _runContainer) RunContainer(
 	// do not change this prefix as it might break external consumers
 	dockerContainerName := getContainerNameForCall(req)
 	defer func() {
-		// ensure container always cleaned up: gracefully stop then delete it
-		newCtx := context.Background() // always use a fresh context, to clean up after cancellation
-		_ = deleteContainer(newCtx, cr.dockerClient, dockerContainerName)
+		// Ensure container is always cleaned up: gracefully stop, then delete.
+		// Critical: this runs on a FRESH context (parent may be cancelled), but
+		// it MUST be bounded — without a deadline, a wedged Docker leaves this
+		// goroutine blocked forever, no CallEnded event ever fires, and the CLI
+		// hangs on Ctrl+C. Bounded by dockerCleanupTimeout; if we exceed it we
+		// surface a warning event so the user sees the smoking-gun message
+		// rather than silent hang.
+		cleanupCtx, cancel := withDockerTimeout(context.Background(), dockerCleanupTimeout())
+		defer cancel()
+
+		dockerInstrInfof("cleanup starting: container=%s", dockerContainerName)
+		cleanupStart := time.Now()
+		cleanupErr := deleteContainer(cleanupCtx, cr.dockerClient, dockerContainerName)
+		cleanupElapsed := time.Since(cleanupStart)
+
+		switch {
+		case cleanupErr == nil:
+			dockerInstrInfof("cleanup ok in %s: container=%s", cleanupElapsed, dockerContainerName)
+		case isDeadlineExceeded(cleanupErr):
+			dockerInstrInfof("cleanup TIMED OUT after %s: container=%s err=%v", cleanupElapsed, dockerContainerName, cleanupErr)
+			publishCleanupTimeoutWarning(eventPublisher, req, rootCallID, dockerContainerName, cleanupElapsed)
+		default:
+			dockerInstrInfof("cleanup failed after %s: container=%s err=%v", cleanupElapsed, dockerContainerName, cleanupErr)
+		}
 	}()
 
 	var imageErr error
@@ -121,28 +150,33 @@ func (cr _runContainer) RunContainer(
 	}
 
 	// create container
-	_, createErr := cr.dockerClient.ContainerCreate(
-		ctx,
-		constructContainerConfig(
-			req.Cmd,
-			req.EnvVars,
-			*req.Image.Ref,
-			portBindings,
-			req.WorkDir,
-			getContainerLabelsForCall(req),
-		),
-		constructHostConfig(
-			req.Dirs,
-			req.Files,
-			req.Sockets,
-			portBindings,
-			isGpuSupported,
-		),
-		networkingConfig,
-		// platform requires API v1.41 so set to nil to avoid version errors
-		nil,
-		dockerContainerName,
-	)
+	createCtx, cancelCreate := withDockerTimeout(ctx, dockerMutationTimeout())
+	createErr := instrumentedDockerCall("ContainerCreate", dockerContainerName, func() error {
+		_, err := cr.dockerClient.ContainerCreate(
+			createCtx,
+			constructContainerConfig(
+				req.Cmd,
+				req.EnvVars,
+				*req.Image.Ref,
+				portBindings,
+				req.WorkDir,
+				getContainerLabelsForCall(req),
+			),
+			constructHostConfig(
+				req.Dirs,
+				req.Files,
+				req.Sockets,
+				portBindings,
+				isGpuSupported,
+			),
+			networkingConfig,
+			// platform requires API v1.41 so set to nil to avoid version errors
+			nil,
+			dockerContainerName,
+		)
+		return err
+	})
+	cancelCreate()
 	if createErr != nil {
 		select {
 		case <-ctx.Done():
@@ -154,12 +188,17 @@ func (cr _runContainer) RunContainer(
 	}
 
 	// start container
-	if err := cr.dockerClient.ContainerStart(
-		ctx,
-		dockerContainerName,
-		container.StartOptions{},
-	); err != nil {
-		return nil, err
+	startCtx, cancelStart := withDockerTimeout(ctx, dockerMutationTimeout())
+	startErr := instrumentedDockerCall("ContainerStart", dockerContainerName, func() error {
+		return cr.dockerClient.ContainerStart(
+			startCtx,
+			dockerContainerName,
+			container.StartOptions{},
+		)
+	})
+	cancelStart()
+	if startErr != nil {
+		return nil, startErr
 	}
 
 	eg, ctx := errgroup.WithContext(ctx)
@@ -184,7 +223,17 @@ func (cr _runContainer) RunContainer(
 	)
 
 	if req.Name != nil {
-		containerJSON, err := cr.dockerClient.ContainerInspect(ctx, dockerContainerName)
+		inspectCtx, cancelInspect := withDockerTimeout(ctx, dockerInspectTimeout())
+		containerJSON, err := func() (types.ContainerJSON, error) {
+			defer cancelInspect()
+			var cj types.ContainerJSON
+			inspectErr := instrumentedDockerCall("ContainerInspect", "dns lookup "+dockerContainerName, func() error {
+				var innerErr error
+				cj, innerErr = cr.dockerClient.ContainerInspect(inspectCtx, dockerContainerName)
+				return innerErr
+			})
+			return cj, inspectErr
+		}()
 		if err != nil {
 			return nil, err
 		}
@@ -227,4 +276,36 @@ func (cr _runContainer) RunContainer(
 
 	return &exitCode, errors.Join(waitErr, logErr)
 
+}
+
+// publishCleanupTimeoutWarning emits a ContainerStdErrWrittenTo event so the
+// CLI surfaces a smoking-gun message when the deferred cleanup blocks past its
+// budget. The message names the timeout and points the user at the recovery
+// path (restart Docker). This is the user-visible counterpart to the
+// dockerInstrInfof log line.
+func publishCleanupTimeoutWarning(
+	eventPublisher pubsub.EventPublisher,
+	req *model.ContainerCall,
+	rootCallID string,
+	dockerContainerName string,
+	elapsed time.Duration,
+) {
+	if eventPublisher == nil || req == nil {
+		return
+	}
+
+	msg := fmt.Sprintf(
+		"\nwarning: cleanup of container %s timed out after %s — Docker may be unresponsive. Try `docker info` or restart Docker Desktop.\n",
+		dockerContainerName,
+		elapsed,
+	)
+	eventPublisher.Publish(model.Event{
+		Timestamp: time.Now().UTC(),
+		ContainerStdErrWrittenTo: &model.ContainerStdErrWrittenTo{
+			Data:        []byte(msg),
+			OpRef:       req.OpPath,
+			ContainerID: req.ContainerID,
+			RootCallID:  rootCallID,
+		},
+	})
 }

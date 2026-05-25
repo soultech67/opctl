@@ -18,6 +18,22 @@ import (
 	"github.com/opctl/opctl/sdks/go/node"
 )
 
+// daemonEnvPassThroughVars lists OPCTL_* env vars whose values must reach the
+// spawned daemon process to take effect. The daemon otherwise gets a near-empty
+// env (see CreateNodeIfNotExists below); anything in this list is forwarded
+// only if set in the calling shell.
+//
+// Important: the daemon is long-lived (one process, reused across `opctl run`
+// invocations). Changing one of these in your shell takes effect only on the
+// NEXT spawn — i.e. after `opctl node kill`.
+var daemonEnvPassThroughVars = []string{
+	// Verbose per-Docker-call timing logs. See sdks/go/node/containerruntime/docker/instrumentation.go.
+	"OPCTL_DEBUG_DOCKER",
+	// Multiplier (default 1.0) applied to every Docker API timeout. Useful on
+	// slow CI / underpowered machines. See timeouts.go.
+	"OPCTL_DOCKER_TIMEOUT_MULTIPLIER",
+}
+
 func (np nodeProvider) CreateNodeIfNotExists(
 	ctx context.Context,
 ) (node.Node, error) {
@@ -65,13 +81,21 @@ func (np nodeProvider) CreateNodeIfNotExists(
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 
-	// don't inherit env; some things like jenkins track and kill processes via injecting env vars
+	// don't inherit env wholesale; some things like jenkins track and kill
+	// processes via injecting env vars. Forward only the minimum the daemon
+	// genuinely needs, plus an opt-in passlist of OPCTL_* tuning vars that
+	// influence runtime behavior (see daemonEnvPassThroughVars).
 	cmd.Env = []string{
 		fmt.Sprintf("HOME=%s", os.Getenv("HOME")),
 		fmt.Sprintf("PATH=%s", os.Getenv("PATH")),
 		// set by sudo; passthru so we maintain provenance for use by "unsudo"
 		fmt.Sprintf("SUDO_GID=%s", os.Getenv("SUDO_GID")),
 		fmt.Sprintf("SUDO_UID=%s", os.Getenv("SUDO_UID")),
+	}
+	for _, name := range daemonEnvPassThroughVars {
+		if value, ok := os.LookupEnv(name); ok {
+			cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", name, value))
+		}
 	}
 
 	cmd.SysProcAttr = &syscall.SysProcAttr{

@@ -57,18 +57,29 @@ func ensureNetworkAttached(
 	//
 	// note: This will likely be brittle because It's relying on undocumented docker for mac internals.
 	if runtime.GOOS == "darwin" {
-		networkInspect, networkInspectErr := dockerClient.NetworkInspect(
-			ctx,
-			networkName,
-			network.InspectOptions{},
-		)
+		inspectCtx, cancelInspect := withDockerTimeout(ctx, dockerInspectTimeout())
+		var networkInspect network.Inspect
+		networkInspectErr := instrumentedDockerCall("NetworkInspect", networkName, func() error {
+			var err error
+			networkInspect, err = dockerClient.NetworkInspect(
+				inspectCtx,
+				networkName,
+				network.InspectOptions{},
+			)
+			return err
+		})
+		cancelInspect()
 		if networkInspectErr != nil {
 			return fmt.Errorf("unable to inspect network: %w", networkInspectErr)
 		}
 
 		if gwm, _ := networkInspect.Options[gatewayModeIpV4]; gwm != natUnprotected {
 			// recreate network if gateway_mode_ipv4 not nat-unprotected
-			err := dockerClient.NetworkRemove(ctx, networkName)
+			removeCtx, cancelRemove := withDockerTimeout(ctx, dockerMutationTimeout())
+			err := instrumentedDockerCall("NetworkRemove", networkName, func() error {
+				return dockerClient.NetworkRemove(removeCtx, networkName)
+			})
+			cancelRemove()
 			if err != nil {
 				return err
 			}

@@ -193,6 +193,16 @@ opctl node and other opctl containers by their name. Containers will be removed 
 				}()
 			}
 
+			// No-progress hint: if no events arrive from the daemon for
+			// noProgressHintAfter, surface a one-shot warning so the user
+			// knows opctl is stuck waiting (typically: Docker is wedged).
+			// Tracked on the wall clock since lastEventAt; the animation
+			// frame ticker checks it every 100ms and emits at most once
+			// per op via noProgressHintShown.
+			const noProgressHintAfter = 30 * time.Second
+			lastEventAt := time.Now()
+			noProgressHintShown := false
+
 			var state opgraph.CallGraph
 			var loadingSpinner opgraph.DotLoadingSpinner
 			output := opgraph.NewOutputManager()
@@ -278,6 +288,9 @@ opctl node and other opctl containers by their name. Containers will be removed 
 						return errors.New("event channel closed unexpectedly")
 					}
 
+					lastEventAt = time.Now()
+					noProgressHintShown = false
+
 					if err := state.HandleEvent(&event); err != nil {
 						cliOutput.Error(fmt.Sprintf("%v", err))
 					}
@@ -298,6 +311,14 @@ opctl node and other opctl containers by their name. Containers will be removed 
 					displayGraph()
 				case <-animationFrame:
 					clearGraph()
+					if !noProgressHintShown && time.Since(lastEventAt) > noProgressHintAfter {
+						cliOutput.Warning(fmt.Sprintf(
+							"no events from opctl daemon in %s — Docker may be unresponsive. "+
+								"Try `docker info` in another shell; if it hangs, restart Docker Desktop.",
+							noProgressHintAfter,
+						))
+						noProgressHintShown = true
+					}
 					displayGraph()
 				}
 			}

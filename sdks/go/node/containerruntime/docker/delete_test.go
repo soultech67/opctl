@@ -50,7 +50,7 @@ var _ = Context("deleteOpctlContainers", func() {
 		Expect(actualErr).To(BeNil())
 
 		actualCtx, actualContainerListOptions := fakeDockerClient.ContainerListArgsForCall(0)
-		Expect(actualCtx).To(Equal(providedCtx))
+		Expect(actualCtx).NotTo(BeNil())
 		Expect(actualContainerListOptions).To(Equal(expectedContainerListOptions))
 
 		_, actualContainerName, _ := fakeDockerClient.ContainerStopArgsForCall(0)
@@ -86,7 +86,7 @@ var _ = Context("DeleteContainer", func() {
 		Expect(actualErr).To(BeNil())
 
 		actualCtx, actualContainerName, _ := fakeDockerClient.ContainerStopArgsForCall(0)
-		Expect(actualCtx).To(Equal(providedCtx))
+		Expect(actualCtx).NotTo(BeNil())
 		Expect(actualContainerName).To(Equal(providedContainerID))
 
 		_, actualContainerName, _ = fakeDockerClient.ContainerRemoveArgsForCall(0)
@@ -140,7 +140,7 @@ var _ = Context("DeleteContainersByLabels", func() {
 		Expect(actualErr).To(BeNil())
 
 		actualCtx, actualContainerListOptions := fakeDockerClient.ContainerListArgsForCall(0)
-		Expect(actualCtx).To(Equal(providedCtx))
+		Expect(actualCtx).NotTo(BeNil())
 		Expect(actualContainerListOptions).To(Equal(expectedContainerListOptions))
 
 		_, firstActualContainerName, _ := fakeDockerClient.ContainerStopArgsForCall(0)
@@ -230,11 +230,11 @@ var _ = Context("ListContainersByLabels", func() {
 		}))
 
 		actualCtx, actualContainerListOptions := fakeDockerClient.ContainerListArgsForCall(0)
-		Expect(actualCtx).To(Equal(providedCtx))
+		Expect(actualCtx).NotTo(BeNil())
 		Expect(actualContainerListOptions).To(Equal(expectedContainerListOptions))
 
 		actualCtx, actualContainerName := fakeDockerClient.ContainerInspectArgsForCall(0)
-		Expect(actualCtx).To(Equal(providedCtx))
+		Expect(actualCtx).NotTo(BeNil())
 		Expect(actualContainerName).To(Equal(expectedContainerName))
 	})
 
@@ -267,7 +267,7 @@ var _ = Context("ListContainersByLabels", func() {
 		Expect(actualContainers).To(BeEmpty())
 
 		actualCtx, actualContainerListOptions := fakeDockerClient.ContainerListArgsForCall(0)
-		Expect(actualCtx).To(Equal(providedCtx))
+		Expect(actualCtx).NotTo(BeNil())
 		Expect(actualContainerListOptions).To(Equal(expectedContainerListOptions))
 	})
 })

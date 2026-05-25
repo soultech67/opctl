@@ -135,8 +135,13 @@ func doesImageNeedPull(
 		return true, err
 	}
 	if tagged, ok := named.(reference.Tagged); ok && tagged.Tag() != "latest" {
-		_, _, err := dockerClient.ImageInspectWithRaw(ctx, imageRef)
-		if err == nil {
+		inspectCtx, cancel := withDockerTimeout(ctx, dockerInspectTimeout())
+		inspectErr := instrumentedDockerCall("ImageInspectWithRaw", "pull-skip check "+imageRef, func() error {
+			_, _, err := dockerClient.ImageInspectWithRaw(inspectCtx, imageRef)
+			return err
+		})
+		cancel()
+		if inspectErr == nil {
 			return false, nil
 		}
 		// this err can be ignored, since it's expected to be "image not found"

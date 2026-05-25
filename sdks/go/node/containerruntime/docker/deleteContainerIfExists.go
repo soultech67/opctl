@@ -2,7 +2,9 @@ package docker
 
 import (
 	"fmt"
+	"time"
 
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"golang.org/x/net/context"
@@ -12,6 +14,12 @@ func (ctp _containerRuntime) DeleteContainerIfExists(
 	ctx context.Context,
 	containerID string,
 ) error {
+	dockerInstrInfof("DeleteContainerIfExists starting: containerID=%s", containerID)
+	startedAt := time.Now()
+	defer func() {
+		dockerInstrInfof("DeleteContainerIfExists done in %s: containerID=%s", time.Since(startedAt), containerID)
+	}()
+
 	containerNames, err := ctp.getContainerNamesByID(ctx, containerID)
 	if err != nil {
 		return err
@@ -35,18 +43,25 @@ func (ctp _containerRuntime) getContainerNamesByID(
 	ctx context.Context,
 	containerID string,
 ) ([]string, error) {
-	containers, err := ctp.dockerClient.ContainerList(
-		ctx,
-		container.ListOptions{
-			All: true,
-			Filters: filters.NewArgs(
-				filters.KeyValuePair{
-					Key:   "label",
-					Value: getContainerIDLabelFilter(containerID),
-				},
-			),
-		},
-	)
+	listCtx, cancel := withDockerTimeout(ctx, dockerInspectTimeout())
+	defer cancel()
+	var containers []types.Container
+	err := instrumentedDockerCall("ContainerList", "lookup by id "+containerID, func() error {
+		var listErr error
+		containers, listErr = ctp.dockerClient.ContainerList(
+			listCtx,
+			container.ListOptions{
+				All: true,
+				Filters: filters.NewArgs(
+					filters.KeyValuePair{
+						Key:   "label",
+						Value: getContainerIDLabelFilter(containerID),
+					},
+				),
+			},
+		)
+		return listErr
+	})
 	if err != nil {
 		return nil, fmt.Errorf("unable to list containers: %w", err)
 	}
