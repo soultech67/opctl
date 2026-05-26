@@ -4,7 +4,7 @@ set -eu
 target=${1:-}
 
 usage() {
-  echo "usage: $0 {install|uninstall}" >&2
+  echo "usage: $0 {install|uninstall|reset-backup}" >&2
   exit 2
 }
 
@@ -375,12 +375,70 @@ uninstall_opctl() {
   echo "backup left in place at $backup; remove it manually if you want a clean state"
 }
 
+reset_opctl_backup() {
+  existing_opctl=$(which opctl 2>/dev/null || true)
+  if [ -z "$existing_opctl" ] || [ ! -f "$existing_opctl" ]; then
+    echo "error: opctl not found on PATH; cannot determine prefix to clear" >&2
+    exit 1
+  fi
+
+  prefix=$(dirname "$existing_opctl")
+
+  # Collect current backups so we can show the user exactly what will be
+  # deleted (and exit cleanly if there's nothing to do).
+  backups=
+  for candidate in "$prefix"/opctl-*; do
+    if [ -f "$candidate" ]; then
+      backups="$backups$candidate
+"
+    fi
+  done
+
+  if [ -z "$backups" ]; then
+    echo "no opctl-* backups found in $prefix; nothing to reset"
+    return 0
+  fi
+
+  echo "the following opctl backup(s) in $prefix will be REMOVED:"
+  printf '%s' "$backups" | sed 's/^/  /'
+
+  # FORCE=1 mirrors `opctl container prune --force` — useful for scripts /
+  # non-interactive flows. Default is to prompt because this destroys the
+  # restore target.
+  if [ "${FORCE:-}" != "1" ]; then
+    printf "proceed? [y/N]: "
+    read -r answer
+    case "$(printf '%s' "$answer" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')" in
+      y|yes) ;;
+      *)
+        echo "reset cancelled"
+        return 0
+        ;;
+    esac
+  fi
+
+  for backup in $(printf '%s' "$backups"); do
+    if can_install_without_sudo "$prefix" "$backup"; then
+      rm -f "$backup"
+    else
+      ensure_sudo "$backup"
+      sudo rm -f "$backup"
+    fi
+  done
+
+  count=$(printf '%s' "$backups" | grep -c .)
+  echo "removed $count backup(s) from $prefix; next \`make install\` will create a fresh backup of the current opctl"
+}
+
 case "$target" in
   install)
     install_opctl
     ;;
   uninstall)
     uninstall_opctl
+    ;;
+  reset-backup)
+    reset_opctl_backup
     ;;
   *)
     usage

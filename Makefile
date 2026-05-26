@@ -12,7 +12,7 @@ SRC_BIN := ./cli/opctl-$(GOOS)-$(GOARCH)
 
 .DEFAULT_GOAL := help
 
-.PHONY: build bld install uninstall test clean release help
+.PHONY: build bld install uninstall reset-backup test clean release help
 
 build: ## Cross-compile the CLI for all platforms via `opctl run compile`; warns if opctl-managed containers leak.
 	@before=$$(docker ps -a --filter label=opctl.managed=true --filter status=created -q 2>/dev/null | wc -l | tr -d ' '); \
@@ -34,6 +34,9 @@ install: ## Delete the running node, back up the existing opctl (once), install 
 
 uninstall: ## Delete the running node and restore the highest-version opctl-* backup over the current binary.
 	@./make.sh uninstall
+
+reset-backup: ## Remove opctl-* backups in the install prefix; next `make install` will create a fresh one. FORCE=1 skips the prompt.
+	@FORCE="$(FORCE)" ./make.sh reset-backup
 
 clean: ## Remove cross-compiled CLI binaries and orphaned opctl-managed containers.
 	@removed=0; \
