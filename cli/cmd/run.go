@@ -199,7 +199,13 @@ opctl node and other opctl containers by their name. Containers will be removed 
 			// Tracked on the wall clock since lastEventAt; the animation
 			// frame ticker checks it every 100ms and emits at most once
 			// per op via noProgressHintShown.
-			const noProgressHintAfter = 30 * time.Second
+			//
+			// 2 min, not 30s: long-running steady-state services (e.g.
+			// localstack's ~30s polling cycles) routinely produce 30-60s
+			// gaps without anything being wrong, which made the 30s threshold
+			// fire as a false positive. 2 min reliably catches the genuine
+			// "Docker wedged" case while staying quiet during normal idle.
+			const noProgressHintAfter = 2 * time.Minute
 			lastEventAt := time.Now()
 			noProgressHintShown := false
 

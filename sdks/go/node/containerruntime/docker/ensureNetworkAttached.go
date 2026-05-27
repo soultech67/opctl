@@ -209,7 +209,21 @@ func wgUp(
 				errs <- err
 				return
 			}
-			go wgDevice.IpcHandle(conn)
+			// Wrap IpcHandle in a panic recoverer. wgDevice.IpcHandle is a
+			// vendored WireGuard call that processes a UAPI socket connection
+			// — a malformed message or any unrecovered panic inside it would
+			// otherwise take down the whole daemon process. Yesterday's
+			// "daemon vanished mid-op, containers orphaned" symptom is exactly
+			// what that would look like. Log + stack so we have evidence for
+			// next time, but keep the daemon alive.
+			go func(conn net.Conn) {
+				defer func() {
+					if panicValue := recover(); panicValue != nil {
+						fmt.Printf("[opctl docker] recovered from wireguard IpcHandle panic: %s\n%s\n", panicValue, string(debug.Stack()))
+					}
+				}()
+				wgDevice.IpcHandle(conn)
+			}(conn)
 		}
 	}()
 

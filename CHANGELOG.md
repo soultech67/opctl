@@ -25,7 +25,7 @@ accordance with
 - Up-front Docker `Ping` health check on container-runtime construction and at the top of every `RunContainer`; if Docker is unresponsive the op fails fast (within ~5s) with an actionable "try `docker info` or restart Docker Desktop" message instead of blocking inside `ContainerCreate`
 - Per-call timeouts on every Docker API call (Ping 5s, Inspect/List 10s, Create/Start/Stop/Remove/NetworkCreate/NetworkRemove 20s). `ContainerWait` and `ImagePull` remain untimed by design (long-running on purpose). Scale all timeouts with `OPCTL_DOCKER_TIMEOUT_MULTIPLIER=2.5` for slow CI/underpowered machines
 - Deferred per-container cleanup is now bounded (30s default, multiplier-scaled). When cleanup exceeds its budget the daemon publishes a `ContainerStdErrWrittenTo` event surfacing `warning: cleanup of container <name> timed out after <duration> — Docker may be unresponsive`, so a wedged Docker no longer silently keeps the CLI spinning forever waiting for a `CallEnded` event that will never fire
-- `opctl run` now emits a one-shot warning when no events arrive from the daemon for 30s, pointing the user at `docker info` and a Docker Desktop restart as the recovery path
+- `opctl run` now emits a one-shot warning when no events arrive from the daemon for 2 minutes, pointing the user at `docker info` and a Docker Desktop restart as the recovery path. (Threshold widened from 30s to 2 min after observing it false-positive against legitimate steady-state services like LocalStack whose internal polling cycle leaves ~30s gaps in event output.)
 - Kill-path instrumentation: the daemon now logs `[opctl kill]` lines at each cleanup step (KillOp received, callKiller.Kill enter/exit with duration, child-propagation count, DeleteContainerIfExists timing) and `[opctl docker]` lines on every Docker call timeout/cancel, so the next time `Ctrl+C` leaves Docker in a bad state we have a paper trail to debug from. Per-call success timings are also available when `OPCTL_DEBUG_DOCKER=1` is set
 - The daemon spawn now forwards `OPCTL_DEBUG_DOCKER` and `OPCTL_DOCKER_TIMEOUT_MULTIPLIER` from the calling shell so these tuning vars can be set in the environment without requiring command-line flags. Note: the daemon is long-lived; `opctl node kill` is required for an env change to take effect
 
@@ -40,6 +40,7 @@ accordance with
 ### Fixed
 
 - Local node startup now repairs ownership of opctl data-dir entries left root-owned by prior sudo'd invocations, so subsequent non-root opctl runs can read and traverse them
+- The macOS WireGuard `mac-net-connect` helper's per-connection `IpcHandle` goroutine (spawned in `ensureNetworkAttached.go`) is now wrapped in a panic recoverer that logs the stack instead of taking down the whole daemon process. An unrecovered panic in this nested goroutine is the most likely cause of the "daemon vanished mid-op, containers left running" symptom observed during local-dev `make up` runs
 
 ## [0.1.77] - 2026-05-17
 
