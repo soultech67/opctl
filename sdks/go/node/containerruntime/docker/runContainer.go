@@ -9,6 +9,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
 	dockerClientPkg "github.com/docker/docker/client"
 	"github.com/opctl/opctl/sdks/go/model"
@@ -150,9 +151,26 @@ func (cr _runContainer) RunContainer(
 	}
 
 	// create container
-	createCtx, cancelCreate := withDockerTimeout(ctx, dockerMutationTimeout())
+	//
+	// IMPORTANT: createCtx is derived from context.Background(), NOT the
+	// parent ctx. Docker's apiproxy cannot abort an in-flight ContainerCreate
+	// when the client disconnects — dockerd may continue processing the
+	// request server-side and leave a `Created`-state container with all the
+	// bind mounts the request asked for, invisible in `docker ps` and silently
+	// blocking subsequent ContainerCreate calls that want overlapping mounts.
+	// (Empirically confirmed via Docker Desktop's VM init.log: cancelled
+	// creates produce no `<<` response line, and ghost containers have been
+	// observed after Ctrl+C on long-running ops.)
+	//
+	// By detaching from parent ctx we wait for dockerd to actually finish
+	// (or for our own 20s timeout to fire), so we know definitively whether
+	// a container exists. Cost: Ctrl+C may take up to dockerMutationTimeout
+	// to take effect when a create is in flight; in exchange we never leak
+	// orphan `Created`-state containers.
+	var createdContainerID string
+	createCtx, cancelCreate := withDockerTimeout(context.Background(), dockerMutationTimeout())
 	createErr := instrumentedDockerCall("ContainerCreate", dockerContainerName, func() error {
-		_, err := cr.dockerClient.ContainerCreate(
+		resp, err := cr.dockerClient.ContainerCreate(
 			createCtx,
 			constructContainerConfig(
 				req.Cmd,
@@ -174,10 +192,20 @@ func (cr _runContainer) RunContainer(
 			nil,
 			dockerContainerName,
 		)
+		if err == nil {
+			createdContainerID = resp.ID
+		}
 		return err
 	})
 	cancelCreate()
 	if createErr != nil {
+		// Reconciliation: did dockerd finish the create despite our timeout?
+		// If our 20s expired but dockerd kept going on its side, the container
+		// may exist now (and would otherwise become an invisible orphan). Look
+		// for it by the opctl.container-id label that getContainerLabelsForCall
+		// stamps on every container we create, and if found, kill it.
+		reconcileTimedOutContainerCreate(cr.dockerClient, req, dockerContainerName)
+
 		select {
 		case <-ctx.Done():
 			// we got killed;
@@ -185,6 +213,17 @@ func (cr _runContainer) RunContainer(
 		default:
 			return nil, errors.Join(imageErr, createErr)
 		}
+	}
+	dockerInstrInfof("ContainerCreate created id=%s name=%s", createdContainerID, dockerContainerName)
+
+	// If parent ctx was cancelled while we waited for ContainerCreate to
+	// finish, the container now exists but the caller has given up. Return
+	// cleanly; the deferred cleanup at the top of this function will
+	// Stop+Remove it via its bounded fresh context.
+	select {
+	case <-ctx.Done():
+		return nil, nil
+	default:
 	}
 
 	// start container
@@ -276,6 +315,69 @@ func (cr _runContainer) RunContainer(
 
 	return &exitCode, errors.Join(waitErr, logErr)
 
+}
+
+// reconcileTimedOutContainerCreate handles the race where our ContainerCreate
+// timed out but dockerd may have completed the create on its server side.
+// We look for a container carrying our `opctl.container-id=<callID>` label
+// (the label we stamp on every container we create via
+// getContainerLabelsForCall) and, if found, force-remove it. Logs everything
+// it does so the daemon log shows when we caught an orphan vs. when there
+// was nothing there.
+//
+// Bounded on its own fresh context (does not inherit cancellation) and short
+// timeout — we don't want to block returning from RunContainer if Docker is
+// still wedged.
+func reconcileTimedOutContainerCreate(
+	dockerClient dockerClientPkg.CommonAPIClient,
+	req *model.ContainerCall,
+	dockerContainerName string,
+) {
+	if req == nil || req.ContainerID == "" {
+		return
+	}
+
+	reconcileCtx, cancel := withDockerTimeout(context.Background(), dockerInspectTimeout())
+	defer cancel()
+
+	containerIDLabelFilter := getContainerIDLabelFilter(req.ContainerID)
+	dockerInstrInfof("ContainerCreate-reconcile: searching for orphan with label %s", containerIDLabelFilter)
+
+	var found []types.Container
+	err := instrumentedDockerCall("ContainerList", "ContainerCreate-reconcile "+dockerContainerName, func() error {
+		var listErr error
+		found, listErr = dockerClient.ContainerList(reconcileCtx, container.ListOptions{
+			All: true,
+			Filters: filters.NewArgs(
+				filters.KeyValuePair{Key: "label", Value: containerIDLabelFilter},
+			),
+		})
+		return listErr
+	})
+	if err != nil {
+		dockerInstrInfof("ContainerCreate-reconcile: ContainerList failed (%v) — orphan may still exist; `opctl container prune` will clean it up", err)
+		return
+	}
+
+	if len(found) == 0 {
+		dockerInstrInfof("ContainerCreate-reconcile: no orphan found; dockerd really did not create the container")
+		return
+	}
+
+	for _, c := range found {
+		dockerInstrInfof("ContainerCreate-reconcile: FOUND orphan id=%s names=%v state=%s — killing", c.ID, c.Names, c.State)
+		killCtx, killCancel := withDockerTimeout(context.Background(), dockerMutationTimeout())
+		killErr := instrumentedDockerCall("ContainerRemove", "ContainerCreate-reconcile "+c.ID, func() error {
+			return dockerClient.ContainerRemove(killCtx, c.ID, container.RemoveOptions{
+				RemoveVolumes: true,
+				Force:         true,
+			})
+		})
+		killCancel()
+		if killErr != nil && !isContainerDeleteAlreadyDone(killErr) {
+			dockerInstrInfof("ContainerCreate-reconcile: failed to remove orphan id=%s: %v (`opctl container prune` will retry)", c.ID, killErr)
+		}
+	}
 }
 
 // publishCleanupTimeoutWarning emits a ContainerStdErrWrittenTo event so the
