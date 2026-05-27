@@ -656,24 +656,43 @@ doctor() {
   fi
   echo
 
-  echo "=== Spotlight indexing for this volume ==="
+  echo "=== Spotlight indexing pressure ==="
   if command -v mdutil >/dev/null 2>&1; then
     # mdutil works per-volume, not per-directory; querying a subdirectory
     # returns "Error: unknown indexing state". Resolve to the volume root.
     volume=$(df "$cwd" 2>/dev/null | awk 'NR==2 {print $NF}')
+    md_state=""
     if [ -n "$volume" ]; then
       md_state=$(mdutil -s "$volume" 2>&1 | tail -1)
       echo "  volume: $volume"
       echo "  $md_state"
-      case "$md_state" in
-        *"Indexing enabled"*)
-          echo "⚠ Spotlight is indexing this volume; mdworker stat calls compete with gRPC-FUSE"
-          echo "  workaround: sudo mdutil -i off $cwd  (excludes this path only)"
-          ;;
-        *"Indexing disabled"*)
-          echo "✓ Spotlight indexing is off for this volume"
-          ;;
-      esac
+    fi
+
+    # Count active metadata workers — this is the more important signal.
+    # Empirically on Docker Desktop + gRPC-FUSE, >5 concurrent mdworker_shared
+    # processes plus an mdsync/mdbulkimport correlates with dockerd
+    # ContainerCreate hangs in syscall.fstatat (gRPC-FUSE starved).
+    #
+    # Use `pgrep -f ... | wc -l` rather than `pgrep -cf`: macOS pgrep doesn't
+    # accept `-cf` combined (exits 2). And `wc -l` always outputs a number so
+    # we don't trip the same "0 + ||echo 0 → '0\n0'" bug that broke the TM
+    # check below.
+    worker_count=$(pgrep -f mdworker_shared 2>/dev/null | wc -l | tr -d ' ')
+    sync_running=$(pgrep -f "mdsync|mdbulkimport" 2>/dev/null | wc -l | tr -d ' ')
+    echo "  active mdworker_shared processes: $worker_count"
+    echo "  active mdsync/mdbulkimport: $sync_running"
+
+    if [ "$worker_count" -gt 5 ] || [ "$sync_running" -gt 0 ]; then
+      echo "⚠ Spotlight is heavily active right now — this competes with gRPC-FUSE for"
+      echo "  macOS-side inode reads when dockerd calls os.Stat() on bind-mount sources."
+      echo "  empirical correlation: goroutine dumps during ContainerCreate hangs show dockerd"
+      echo "  stuck in syscall.fstatat going through gRPC-FUSE while mdworker is busy on the host."
+      echo "  workarounds:"
+      echo "    - exclude this project from Spotlight: sudo mdutil -i off $cwd"
+      echo "    - or use System Settings → Spotlight → Search Privacy to add the dir"
+      echo "    - nuclear: sudo mdutil -i off $volume  (disables Spotlight for the whole volume)"
+    elif [ "$worker_count" -le 1 ]; then
+      echo "✓ no significant Spotlight pressure"
     fi
   else
     echo "(mdutil not available)"
@@ -697,22 +716,30 @@ doctor() {
 
   echo "=== Time Machine status ==="
   if command -v tmutil >/dev/null 2>&1; then
-    if pgrep -x backupd >/dev/null 2>&1 || pgrep -x mdworker >/dev/null 2>&1; then
-      tm_phase=$(tmutil status 2>/dev/null | awk '/BackupPhase/{print $3}' | tr -d '";')
-      if [ -n "$tm_phase" ] && [ "$tm_phase" != "BackupNotRunning" ]; then
-        echo "⚠ Time Machine is CURRENTLY active (phase: $tm_phase) — mdworker reads compete with gRPC-FUSE"
-        echo "  workaround options:"
+    # First: is TM even configured? Many users have no destination set, in
+    # which case TM never runs and isn't a concern. Use grep -q (binary
+    # match) to avoid the "grep -c outputs '0' AND exits 1 + ||echo 0
+    # appends another '0'" bug that breaks numeric comparisons.
+    if tmutil destinationinfo 2>/dev/null | grep -q "^Name "; then
+      dest_count=$(tmutil destinationinfo 2>/dev/null | grep -c "^Name " | tr -d ' ')
+      # Configured. Check whether a backup is currently in flight via tmutil's
+      # own status field rather than process scan (mdworker ≠ TM).
+      tm_running=$(tmutil status 2>/dev/null | awk '/Running/{print $3}' | tr -d ';')
+      if [ "$tm_running" = "1" ]; then
+        tm_phase=$(tmutil status 2>/dev/null | awk '/BackupPhase/{print $3}' | tr -d '";')
+        echo "⚠ Time Machine is CURRENTLY backing up (phase: $tm_phase)"
+        echo "  workarounds:"
         echo "    - exclude this dir: sudo tmutil addexclusion $cwd"
         echo "    - schedule TM via TimeMachineEditor (free third-party app)"
       else
-        echo "✓ Time Machine not currently backing up"
+        echo "✓ Time Machine is configured ($dest_count destination(s)) but not currently active"
+      fi
+      excluded=$(tmutil isexcluded "$cwd" 2>/dev/null | tail -1)
+      if [ -n "$excluded" ]; then
+        echo "  this dir's exclusion status: $excluded"
       fi
     else
-      echo "✓ no Time Machine / mdworker activity detected"
-    fi
-    excluded=$(tmutil isexcluded "$cwd" 2>/dev/null | tail -1)
-    if [ -n "$excluded" ]; then
-      echo "  this dir's exclusion status: $excluded"
+      echo "✓ no Time Machine destination configured — TM is not running on this machine"
     fi
   else
     echo "(tmutil not available)"
