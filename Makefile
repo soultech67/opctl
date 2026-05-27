@@ -12,7 +12,7 @@ SRC_BIN := ./cli/opctl-$(GOOS)-$(GOARCH)
 
 .DEFAULT_GOAL := help
 
-.PHONY: build bld install uninstall reset-backup test clean release help
+.PHONY: build bld install uninstall reset-backup docker-logs docker-daemon-logs up test clean release help
 
 build: ## Cross-compile the CLI for all platforms via `opctl run compile`; warns if opctl-managed containers leak.
 	@before=$$(docker ps -a --filter label=opctl.managed=true --filter status=created -q 2>/dev/null | wc -l | tr -d ' '); \
@@ -37,6 +37,15 @@ uninstall: ## Delete the running node and restore the highest-version opctl-* ba
 
 reset-backup: ## Remove opctl-* backups in the install prefix; next `make install` will create a fresh one. FORCE=1 skips the prompt.
 	@FORCE="$(FORCE)" ./make.sh reset-backup
+
+docker-logs: ## Stream filtered Docker VM init.log + docker events for opctl-managed containers to ./docker-logs/. Ctrl+C to stop. (macOS Docker Desktop)
+	@OPCTL_DOCKER_LOG_DIR="$(OPCTL_DOCKER_LOG_DIR)" ./make.sh docker-logs
+
+docker-daemon-logs: ## Signal dockerd to dump every goroutine's stack. Run this WHILE a hang is in progress. Output: ./docker-logs/dockerd-goroutines-*.log. (macOS Docker Desktop)
+	@OPCTL_DOCKER_LOG_DIR="$(OPCTL_DOCKER_LOG_DIR)" ./make.sh docker-daemon-logs
+
+up: ## Run opctl daemon in foreground with OPCTL_DEBUG_DOCKER=1 (kills any background daemon first). Pair with `make docker-logs` / `make docker-daemon-logs` to capture full visibility while reproducing a hang.
+	@OPCTL_DEBUG_DOCKER="$(OPCTL_DEBUG_DOCKER)" OPCTL_DOCKER_TIMEOUT_MULTIPLIER="$(OPCTL_DOCKER_TIMEOUT_MULTIPLIER)" ./make.sh up
 
 clean: ## Remove cross-compiled CLI binaries and orphaned opctl-managed containers.
 	@removed=0; \

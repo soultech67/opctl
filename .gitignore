@@ -15,6 +15,9 @@ coverage/
 /cli/opctl-*
 /opctl-*
 
+### docker diagnostics (output of `make docker-logs` / `make docker-daemon-logs`)
+/docker-logs/
+
 ### graphify
 .graphify_python
 .graphify_detect.json

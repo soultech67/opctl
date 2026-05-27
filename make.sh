@@ -4,7 +4,7 @@ set -eu
 target=${1:-}
 
 usage() {
-  echo "usage: $0 {install|uninstall|reset-backup}" >&2
+  echo "usage: $0 {install|uninstall|reset-backup|docker-logs|docker-daemon-logs|up}" >&2
   exit 2
 }
 
@@ -430,6 +430,192 @@ reset_opctl_backup() {
   echo "removed $count backup(s) from $prefix; next \`make install\` will create a fresh backup of the current opctl"
 }
 
+# docker_logs streams two independent Docker observability sources to files
+# so we have a paper trail when reproducing a hang, without flooding the
+# terminal:
+#
+#   1. tail -F of Docker Desktop's VM init.log, filtered to lines mentioning
+#      opctl, apiproxy POSTs (every container/network operation), or any
+#      warning/error level. This is what dockerd actually does on every API
+#      request.
+#   2. docker events filtered to opctl-managed containers — the canonical
+#      "what containers did Docker create / start / kill" stream.
+#
+# Both run in the background; foreground waits until Ctrl+C, then cleans up.
+# Log paths overridable via OPCTL_DOCKER_LOG_DIR (default: ./docker-logs).
+docker_logs() {
+  log_dir=${OPCTL_DOCKER_LOG_DIR:-./docker-logs}
+  mkdir -p "$log_dir"
+
+  apiproxy_log=$log_dir/apiproxy.log
+  events_log=$log_dir/events.log
+  vm_log=$HOME/Library/Containers/com.docker.docker/Data/log/vm/init.log
+
+  if [ ! -f "$vm_log" ]; then
+    echo "warning: Docker Desktop VM log not found at:" >&2
+    echo "  $vm_log" >&2
+    echo "this target is macOS Docker Desktop specific; apiproxy stream will be empty" >&2
+  fi
+
+  # Truncate (not append) so each capture session is self-contained.
+  : > "$apiproxy_log"
+  : > "$events_log"
+
+  echo "streaming Docker logs to:"
+  echo "  $apiproxy_log  (filtered VM init.log: opctl/apiproxy POSTs/warn|error)"
+  echo "  $events_log    (docker events --filter label=opctl.managed=true)"
+  echo
+  echo "Reproduce your hang now. Press Ctrl+C here when done."
+  echo
+
+  # Each pipeline runs in its own subshell so we have a single PID to kill.
+  # The subshell on SIGTERM tears down its children (tail, grep) by default
+  # in /bin/sh on macOS (bash). pkill -P as a belt-and-suspenders below.
+  (
+    exec tail -F "$vm_log" 2>/dev/null \
+      | grep --line-buffered -E 'opctl_|apiproxy.*POST|level":"(warn|error)' \
+      > "$apiproxy_log"
+  ) &
+  apiproxy_pid=$!
+
+  (
+    exec docker events --filter label=opctl.managed=true > "$events_log"
+  ) &
+  events_pid=$!
+
+  cleanup_docker_logs() {
+    echo
+    echo "stopping log streams..."
+    # Kill the subshells; pkill -P chases their children (tail, grep, docker).
+    kill "$apiproxy_pid" "$events_pid" 2>/dev/null || true
+    pkill -P "$apiproxy_pid" 2>/dev/null || true
+    pkill -P "$events_pid" 2>/dev/null || true
+    wait "$apiproxy_pid" "$events_pid" 2>/dev/null || true
+
+    apiproxy_lines=$(wc -l <"$apiproxy_log" 2>/dev/null | tr -d ' ' || echo 0)
+    events_lines=$(wc -l <"$events_log" 2>/dev/null | tr -d ' ' || echo 0)
+    echo "captured:"
+    echo "  $apiproxy_log  ($apiproxy_lines lines)"
+    echo "  $events_log    ($events_lines lines)"
+  }
+  trap cleanup_docker_logs EXIT INT TERM
+
+  wait
+}
+
+# docker_daemon_logs sends SIGUSR1 to dockerd inside the Docker Desktop VM,
+# triggering dockerd to dump every goroutine's stack trace to its own log.
+# That's the most concrete way to see WHY a Docker API call (e.g. our 20s
+# ContainerCreate hang) is stuck — the dump names the goroutine and the
+# function/line it's blocked on (lock acquire, channel recv, etc.).
+#
+# Fire this WHILE the hang is in progress (within the 20s opctl spinner
+# window). After dockerd writes the dump, it persists in the log file.
+docker_daemon_logs() {
+  vm_log=$HOME/Library/Containers/com.docker.docker/Data/log/vm/init.log
+  if [ ! -f "$vm_log" ]; then
+    echo "error: Docker Desktop VM log not found at:" >&2
+    echo "  $vm_log" >&2
+    echo "this target is macOS Docker Desktop specific" >&2
+    exit 1
+  fi
+
+  echo "discovering dockerd PID inside the Docker Desktop VM..."
+  # ps inside the privileged-pid=host alpine container reports VM PIDs.
+  # Take the first match because there's only ever one dockerd; trim
+  # leading whitespace from ps's right-aligned PID column.
+  dockerd_pid=$(docker run --rm --privileged --pid=host alpine sh -c \
+    'ps -o pid,comm | awk "/dockerd\$/{print \$1; exit}"' 2>/dev/null \
+    | tr -d ' ')
+  if [ -z "$dockerd_pid" ]; then
+    echo "error: could not locate dockerd PID inside the VM" >&2
+    echo "  is Docker Desktop running? try \`docker info\`" >&2
+    exit 1
+  fi
+  echo "dockerd PID inside VM: $dockerd_pid"
+
+  echo "sending SIGUSR1 → goroutine stack dump..."
+  docker run --rm --privileged --pid=host alpine kill -USR1 "$dockerd_pid"
+
+  # Give dockerd a moment to actually write the dump.
+  sleep 2
+
+  log_dir=${OPCTL_DOCKER_LOG_DIR:-./docker-logs}
+  mkdir -p "$log_dir"
+  dump_file=$log_dir/dockerd-goroutines-$(date +%Y%m%d-%H%M%S).log
+
+  # dockerd writes the dump to a separate file *inside the VM*, NOT inline
+  # in init.log. The path it announces in init.log looks like:
+  #   "goroutine stacks written to /var/run/docker/goroutine-stacks-<ts>.log"
+  # We retrieve it by mounting the VM's /var/run/docker into a throwaway
+  # alpine container — when docker creates a bind mount from "/var/run/docker"
+  # the source path resolves on the VM's filesystem, not the macOS host.
+  docker run --rm -v /var/run/docker:/dockerrun alpine sh -c \
+    'ls -1t /dockerrun/goroutine-stacks-*.log 2>/dev/null | head -1 | xargs -r cat' \
+    > "$dump_file" 2>/dev/null || true
+
+  if [ -s "$dump_file" ]; then
+    line_count=$(wc -l <"$dump_file" | tr -d ' ')
+    echo "dump captured: $dump_file ($line_count lines)"
+
+    # Note the source path inside the VM so the user can correlate with
+    # the apiproxy log line if they want to.
+    src=$(grep "goroutine stacks written" "$vm_log" 2>/dev/null | tail -1 \
+      | grep -oE "/var/run/docker/goroutine-stacks-[^\"]*\.log" | head -1)
+    if [ -n "$src" ]; then
+      echo "source path inside VM: $src"
+    fi
+  else
+    rm -f "$dump_file"
+    echo "could not retrieve goroutine dump from VM"
+    echo "the dump should exist at /var/run/docker/goroutine-stacks-*.log inside the VM"
+    echo "manual check:"
+    echo "  grep 'goroutine stacks written' $vm_log | tail -1"
+  fi
+}
+
+# opctl_up kills any background daemon and re-launches it in the foreground
+# with OPCTL_DEBUG_DOCKER=1, so the daemon's [opctl docker] / [opctl kill]
+# instrumentation prints to this terminal in real time. Pair with
+# `make docker-logs` and `make docker-daemon-logs` (in other terminals) for
+# full visibility while reproducing a hang.
+opctl_up() {
+  if ! command -v opctl >/dev/null 2>&1; then
+    echo "error: opctl not on PATH; run \`make install\` first" >&2
+    exit 1
+  fi
+
+  echo "killing any background opctl daemon so we can start fresh in foreground..."
+  # Don't fail if none is running.
+  sudo opctl node kill 2>/dev/null || true
+
+  # Forward the timeout multiplier if the user has set one. OPCTL_DEBUG_DOCKER
+  # we set unconditionally (the whole point of `make up` is to see those logs)
+  # — user can still override by exporting OPCTL_DEBUG_DOCKER=0 if they want.
+  multiplier_env=""
+  if [ -n "${OPCTL_DOCKER_TIMEOUT_MULTIPLIER:-}" ]; then
+    multiplier_env="OPCTL_DOCKER_TIMEOUT_MULTIPLIER=$OPCTL_DOCKER_TIMEOUT_MULTIPLIER"
+  fi
+
+  debug_value=${OPCTL_DEBUG_DOCKER:-1}
+
+  echo
+  echo "starting opctl node create in foreground:"
+  echo "  OPCTL_DEBUG_DOCKER=$debug_value${multiplier_env:+, $multiplier_env}"
+  echo "  container-runtime=docker"
+  echo "  daemon logs ([opctl docker] / [opctl kill]) stream to THIS terminal"
+  echo "  Ctrl+C to stop the daemon"
+  echo
+
+  # exec so Ctrl+C reaches the daemon directly (no extra shell hop). sudo's
+  # VAR=val syntax forwards env without needing -E.
+  # shellcheck disable=SC2086  # intentional word split for optional env var
+  exec sudo \
+    OPCTL_DEBUG_DOCKER="$debug_value" \
+    $multiplier_env \
+    opctl --container-runtime docker node create
+}
+
 case "$target" in
   install)
     install_opctl
@@ -439,6 +625,15 @@ case "$target" in
     ;;
   reset-backup)
     reset_opctl_backup
+    ;;
+  docker-logs)
+    docker_logs
+    ;;
+  docker-daemon-logs)
+    docker_daemon_logs
+    ;;
+  up)
+    opctl_up
     ;;
   *)
     usage
