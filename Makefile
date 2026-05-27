@@ -12,7 +12,7 @@ SRC_BIN := ./cli/opctl-$(GOOS)-$(GOARCH)
 
 .DEFAULT_GOAL := help
 
-.PHONY: build bld install uninstall reset-backup docker-logs docker-daemon-logs up test clean release help
+.PHONY: build bld install uninstall reset-backup docker-logs docker-daemon-logs up doctor docker-restart test clean release help
 
 build: ## Cross-compile the CLI for all platforms via `opctl run compile`; warns if opctl-managed containers leak.
 	@before=$$(docker ps -a --filter label=opctl.managed=true --filter status=created -q 2>/dev/null | wc -l | tr -d ' '); \
@@ -46,6 +46,12 @@ docker-daemon-logs: ## Signal dockerd to dump every goroutine's stack. Run this 
 
 up: ## Run opctl daemon in foreground with OPCTL_DEBUG_DOCKER=1 (kills any background daemon first). Pair with `make docker-logs` / `make docker-daemon-logs` to capture full visibility while reproducing a hang.
 	@OPCTL_DEBUG_DOCKER="$(OPCTL_DEBUG_DOCKER)" OPCTL_DOCKER_TIMEOUT_MULTIPLIER="$(OPCTL_DOCKER_TIMEOUT_MULTIPLIER)" ./make.sh up
+
+doctor: ## Read-only health check for Docker Desktop, gRPC-FUSE wedge symptoms, and orphan containers. Run BEFORE debugging a hang to spot the obvious issues. (macOS Docker Desktop)
+	@./make.sh doctor
+
+docker-restart: ## Nuclear recovery: kill opctl daemon, quit + relaunch Docker Desktop, wait for daemon. Use when `make doctor` shows docker info unresponsive. (macOS Docker Desktop)
+	@./make.sh docker-restart
 
 clean: ## Remove cross-compiled CLI binaries and orphaned opctl-managed containers.
 	@removed=0; \

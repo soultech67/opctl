@@ -4,7 +4,7 @@ set -eu
 target=${1:-}
 
 usage() {
-  echo "usage: $0 {install|uninstall|reset-backup|docker-logs|docker-daemon-logs|up}" >&2
+  echo "usage: $0 {install|uninstall|reset-backup|docker-logs|docker-daemon-logs|up|doctor|docker-restart}" >&2
   exit 2
 }
 
@@ -616,6 +616,156 @@ opctl_up() {
     opctl --container-runtime docker node create
 }
 
+# doctor runs read-only diagnostics for the classic Docker-Desktop-wedged
+# pathology. No side effects — safe to invoke any time, especially before
+# debugging a hang. Each check prints ✓ / ⚠ / ✗ and a fix hint when relevant.
+doctor() {
+  cwd=$(pwd)
+
+  echo "=== opctl-managed containers (any state) ==="
+  if docker ps -a --filter label=opctl.managed=true --format \
+    'table {{.ID}}\t{{.Names}}\t{{.Status}}' 2>/dev/null; then :
+  else
+    echo "✗ docker not responsive — cannot list containers"
+  fi
+  echo
+
+  echo "=== Created-state containers (the invisible-orphan pathology) ==="
+  created_count=$(docker ps -a --filter status=created --filter label=opctl.managed=true -q 2>/dev/null | wc -l | tr -d ' ')
+  if [ "$created_count" -gt 0 ]; then
+    echo "⚠ $created_count opctl container(s) stuck in Created state — these block subsequent ContainerCreate calls with overlapping mounts"
+    echo "  fix: make clean"
+  else
+    echo "✓ none"
+  fi
+  echo
+
+  echo "=== Docker daemon responsiveness ==="
+  start=$(date +%s)
+  if docker info >/dev/null 2>&1; then
+    elapsed=$(( $(date +%s) - start ))
+    if [ "$elapsed" -le 1 ]; then
+      echo "✓ docker info responded in <1s"
+    else
+      echo "⚠ docker info took ${elapsed}s (>1s suggests dockerd is overloaded)"
+      echo "  fix: make docker-restart"
+    fi
+  else
+    echo "✗ docker info FAILED — Docker Desktop may need a restart"
+    echo "  fix: make docker-restart"
+  fi
+  echo
+
+  echo "=== Spotlight indexing for this volume ==="
+  if command -v mdutil >/dev/null 2>&1; then
+    # mdutil works per-volume, not per-directory; querying a subdirectory
+    # returns "Error: unknown indexing state". Resolve to the volume root.
+    volume=$(df "$cwd" 2>/dev/null | awk 'NR==2 {print $NF}')
+    if [ -n "$volume" ]; then
+      md_state=$(mdutil -s "$volume" 2>&1 | tail -1)
+      echo "  volume: $volume"
+      echo "  $md_state"
+      case "$md_state" in
+        *"Indexing enabled"*)
+          echo "⚠ Spotlight is indexing this volume; mdworker stat calls compete with gRPC-FUSE"
+          echo "  workaround: sudo mdutil -i off $cwd  (excludes this path only)"
+          ;;
+        *"Indexing disabled"*)
+          echo "✓ Spotlight indexing is off for this volume"
+          ;;
+      esac
+    fi
+  else
+    echo "(mdutil not available)"
+  fi
+  echo
+
+  echo "=== node_modules sizes (gRPC-FUSE chokes on big trees) ==="
+  found_any=0
+  for dir in node_modules webapp/node_modules website/node_modules; do
+    if [ -d "$dir" ]; then
+      found_any=1
+      size=$(du -sh "$dir" 2>/dev/null | awk '{print $1}')
+      count=$(find "$dir" -type f 2>/dev/null | wc -l | tr -d ' ')
+      echo "  $dir: $size ($count files)"
+    fi
+  done
+  if [ $found_any -eq 0 ]; then
+    echo "  (none in this directory)"
+  fi
+  echo
+
+  echo "=== Time Machine status ==="
+  if command -v tmutil >/dev/null 2>&1; then
+    if pgrep -x backupd >/dev/null 2>&1 || pgrep -x mdworker >/dev/null 2>&1; then
+      tm_phase=$(tmutil status 2>/dev/null | awk '/BackupPhase/{print $3}' | tr -d '";')
+      if [ -n "$tm_phase" ] && [ "$tm_phase" != "BackupNotRunning" ]; then
+        echo "⚠ Time Machine is CURRENTLY active (phase: $tm_phase) — mdworker reads compete with gRPC-FUSE"
+        echo "  workaround options:"
+        echo "    - exclude this dir: sudo tmutil addexclusion $cwd"
+        echo "    - schedule TM via TimeMachineEditor (free third-party app)"
+      else
+        echo "✓ Time Machine not currently backing up"
+      fi
+    else
+      echo "✓ no Time Machine / mdworker activity detected"
+    fi
+    excluded=$(tmutil isexcluded "$cwd" 2>/dev/null | tail -1)
+    if [ -n "$excluded" ]; then
+      echo "  this dir's exclusion status: $excluded"
+    fi
+  else
+    echo "(tmutil not available)"
+  fi
+  echo
+
+  echo "=== installed opctl vs latest local commit ==="
+  if command -v opctl >/dev/null 2>&1; then
+    installed_path=$(which opctl)
+    installed_mtime=$(stat -f "%Sm" "$installed_path" 2>/dev/null || echo unknown)
+    last_commit_time=$(git -C "$(dirname "$0")" log -1 --format="%ad" --date=local 2>/dev/null || echo unknown)
+    echo "  installed: $installed_path (mtime: $installed_mtime)"
+    echo "  HEAD:      $last_commit_time"
+    echo "  if HEAD is newer, run: make build && sudo make install"
+  fi
+}
+
+# docker_restart is the nuclear recovery: kills opctl daemon, quits and
+# relaunches Docker Desktop, waits for the daemon to come back. Use when
+# `make doctor` reports docker info as unresponsive or after a Goroutine
+# dump shows dockerd stuck in syscall.fstatat (gRPC-FUSE wedge).
+docker_restart() {
+  echo "killing opctl daemon (if any)..."
+  if command -v opctl >/dev/null 2>&1; then
+    sudo opctl node kill 2>/dev/null || true
+  fi
+
+  echo "quitting Docker Desktop..."
+  osascript -e 'quit app "Docker"' 2>/dev/null || true
+
+  # Give Docker Desktop time to actually exit and tear down its VM. Too
+  # short and the relaunch races against the previous instance shutting
+  # down; symptom is "Docker Desktop is already running" + empty docker info.
+  sleep 5
+
+  echo "relaunching Docker Desktop..."
+  open -a Docker
+
+  echo "waiting for Docker daemon to come back online (up to 90s)..."
+  i=0
+  while [ $i -lt 90 ]; do
+    if docker info >/dev/null 2>&1; then
+      echo "✓ docker info responded after ${i}s"
+      return 0
+    fi
+    i=$((i + 1))
+    sleep 1
+  done
+
+  echo "✗ Docker daemon did not respond within 90s — check Docker Desktop UI manually" >&2
+  exit 1
+}
+
 case "$target" in
   install)
     install_opctl
@@ -634,6 +784,12 @@ case "$target" in
     ;;
   up)
     opctl_up
+    ;;
+  doctor)
+    doctor
+    ;;
+  docker-restart)
+    docker_restart
     ;;
   *)
     usage
