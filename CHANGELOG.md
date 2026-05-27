@@ -41,6 +41,7 @@ accordance with
 
 - Local node startup now repairs ownership of opctl data-dir entries left root-owned by prior sudo'd invocations, so subsequent non-root opctl runs can read and traverse them
 - The macOS WireGuard `mac-net-connect` helper's per-connection `IpcHandle` goroutine (spawned in `ensureNetworkAttached.go`) is now wrapped in a panic recoverer that logs the stack instead of taking down the whole daemon process. An unrecovered panic in this nested goroutine is the most likely cause of the "daemon vanished mid-op, containers left running" symptom observed during local-dev `make up` runs
+- `instrumentedDockerCall` now demotes the three expected-by-design Docker error patterns from `[opctl docker debug] <op> failed` to `[opctl docker debug] <op> noop (<reason>)`: `ContainerStop`/`ContainerRemove` on a not-found container (the if-exists path), `ContainerRemove` racing an in-progress removal (kill cascade vs. cleanup defer), and `NetworkCreate` against an already-existing network (race-tolerant ensure pattern). Cleans up the daemon log so real errors stand out when they happen
 
 ## [0.1.77] - 2026-05-17
 
