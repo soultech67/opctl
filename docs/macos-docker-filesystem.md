@@ -70,6 +70,21 @@ independent of opctl. **None of opctl's reliability fixes (per-call timeouts,
 create-context detach, orphan reconcile) address it** — they prevent opctl from
 leaking orphan containers; they do not change how the FS bridge caches inodes.
 
+### Verify which implementation you're ACTUALLY on (don't assume)
+
+The setting drifts — a Docker Desktop update can flip it, and the UI default
+has changed across versions. Before reasoning about FS behavior, check the
+persisted setting on disk (works even with Docker quit):
+
+```sh
+grep VirtioFS "$HOME/Library/Group Containers/group.com.docker/settings-store.json"
+# "UseVirtualizationFrameworkVirtioFS": true   → VirtioFS
+# "UseVirtualizationFrameworkVirtioFS": false  → gRPC-FUSE
+```
+
+(During this investigation we spent significant effort assuming gRPC-FUSE
+when the machine was actually on VirtioFS the whole time. Check first.)
+
 ## Fixes, cheapest first
 
 ### 1. Exclude project trees from Spotlight (helps BOTH bridges)
@@ -133,6 +148,43 @@ Independent of file-sharing implementation: if an op bind-mounts a 40k-file
 not mount it from the host at all — install deps *inside* the container against
 a named volume, so the host tree is never stat-walked by dockerd. This removes
 the root cause for both bridges.
+
+### 4. Right-size the VM for heavy concurrent load
+
+If you run many systems at once (several compose-style stacks + build ops
+churning create/destroy through the one Docker VM), the failure isn't a single
+slow stat — it's the whole VM backend getting starved or crashing under
+sustained pressure. The tell is `com.docker.virtualization` itself crashing,
+e.g.:
+
+```
+com.docker.virtualization: process terminated unexpectedly:
+  use of closed network connection
+```
+
+That's the Apple Virtualization.framework process hosting the Linux VM dying —
+not opctl, not the opspec, not the host filesystem. It correlates with LOAD,
+not Docker Desktop version (observed identically on 4.74.0 and 4.75.0).
+
+Levers, in order:
+
+1. **Don't over-allocate VM memory.** Check Settings → Resources → Memory
+   against host RAM:
+   ```sh
+   grep MemoryMiB "$HOME/Library/Group Containers/group.com.docker/settings-store.json"
+   sysctl -n hw.memsize | awk '{print $1/1024/1024 " MiB host"}'
+   ```
+   Allocating ~70%+ of host RAM to the VM leaves too little for macOS + the
+   virtualization host process under load. ~50% is a saner ceiling; raise only
+   if a workload genuinely needs it.
+2. **Reduce concurrency.** Bring up only the systems you're actively working
+   on. One VM serving 10+ churning containers across several stacks is the
+   stress that surfaces backend crashes a single-workload user never sees.
+3. **Reboot after a virtualization crash.** A crashed `com.docker.virtualization`
+   can leave Virtualization.framework / vmnet kernel state that a Docker
+   restart alone won't clear. Reboot is the clean reset.
+4. **Reset to factory defaults** (Docker Desktop → Troubleshoot) if crashes
+   recur right after a clean boot — rebuilds the VM disk from scratch.
 
 ## Diagnostic + recovery tooling (Makefile targets)
 
