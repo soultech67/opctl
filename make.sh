@@ -668,21 +668,26 @@ doctor() {
       echo "  $md_state"
     fi
 
-    # Count active metadata workers — this is the more important signal.
-    # Empirically on Docker Desktop + gRPC-FUSE, >5 concurrent mdworker_shared
-    # processes plus an mdsync/mdbulkimport correlates with dockerd
-    # ContainerCreate hangs in syscall.fstatat (gRPC-FUSE starved).
+    # Count active metadata workers — this is the reliable signal.
+    # Empirically on Docker Desktop + gRPC-FUSE, a burst of concurrent
+    # mdworker_shared processes (we've seen 15-18) correlates with dockerd
+    # ContainerCreate hangs in syscall.fstatat (gRPC-FUSE starved). When idle,
+    # mdworker_shared drops to 0.
+    #
+    # We deliberately DON'T trigger on mdsync/mdbulkimport: a single
+    # mdbulkimport (MDSImporterBundleFinder) runs as a persistent baseline
+    # daemon for days at 0% CPU, so keying on its presence would warn forever.
+    # We report its count for context only.
     #
     # Use `pgrep -f ... | wc -l` rather than `pgrep -cf`: macOS pgrep doesn't
     # accept `-cf` combined (exits 2). And `wc -l` always outputs a number so
-    # we don't trip the same "0 + ||echo 0 → '0\n0'" bug that broke the TM
-    # check below.
+    # we don't trip the "grep/pgrep exits 1 + ||echo 0 → '0\n0'" bug.
     worker_count=$(pgrep -f mdworker_shared 2>/dev/null | wc -l | tr -d ' ')
     sync_running=$(pgrep -f "mdsync|mdbulkimport" 2>/dev/null | wc -l | tr -d ' ')
     echo "  active mdworker_shared processes: $worker_count"
-    echo "  active mdsync/mdbulkimport: $sync_running"
+    echo "  mdsync/mdbulkimport (baseline daemons, informational): $sync_running"
 
-    if [ "$worker_count" -gt 5 ] || [ "$sync_running" -gt 0 ]; then
+    if [ "$worker_count" -gt 5 ]; then
       echo "⚠ Spotlight is heavily active right now — this competes with gRPC-FUSE for"
       echo "  macOS-side inode reads when dockerd calls os.Stat() on bind-mount sources."
       echo "  empirical correlation: goroutine dumps during ContainerCreate hangs show dockerd"
@@ -692,8 +697,10 @@ doctor() {
       echo "      (drop the same file in your other project roots; delete it to re-enable)"
       echo "    - or System Settings → Spotlight → Search Privacy → add the folder"
       echo "    - nuclear (whole volume): sudo mdutil -i off $volume"
-    elif [ "$worker_count" -le 1 ]; then
-      echo "✓ no significant Spotlight pressure"
+    elif [ "$worker_count" -eq 0 ]; then
+      echo "✓ no active Spotlight indexing (mdworker_shared idle)"
+    else
+      echo "✓ light Spotlight activity ($worker_count workers) — not a concern unless builds hang"
     fi
   else
     echo "(mdutil not available)"
