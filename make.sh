@@ -687,10 +687,11 @@ doctor() {
       echo "  macOS-side inode reads when dockerd calls os.Stat() on bind-mount sources."
       echo "  empirical correlation: goroutine dumps during ContainerCreate hangs show dockerd"
       echo "  stuck in syscall.fstatat going through gRPC-FUSE while mdworker is busy on the host."
-      echo "  workarounds:"
-      echo "    - exclude this project from Spotlight: sudo mdutil -i off $cwd"
-      echo "    - or use System Settings → Spotlight → Search Privacy to add the dir"
-      echo "    - nuclear: sudo mdutil -i off $volume  (disables Spotlight for the whole volume)"
+      echo "  workarounds (mdutil -i works on VOLUMES, not directories — use these for a dir):"
+      echo "    - exclude this dir + everything under it: touch $cwd/.metadata_never_index"
+      echo "      (drop the same file in your other project roots; delete it to re-enable)"
+      echo "    - or System Settings → Spotlight → Search Privacy → add the folder"
+      echo "    - nuclear (whole volume): sudo mdutil -i off $volume"
     elif [ "$worker_count" -le 1 ]; then
       echo "✓ no significant Spotlight pressure"
     fi
