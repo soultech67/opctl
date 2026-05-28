@@ -8,6 +8,40 @@ usage() {
   exit 2
 }
 
+# run_bounded <seconds> <stdout-file> <cmd...>: run cmd with a wall-clock
+# timeout (macOS has no `timeout`/`gtimeout` by default). cmd's stdout goes to
+# stdout-file. Returns cmd's exit code on completion, or 124 on timeout.
+# Used to keep `docker run`-based introspection from hanging forever when
+# Docker itself is wedged at the container-start level.
+run_bounded() {
+  _rb_timeout=$1
+  _rb_out=$2
+  shift 2
+
+  "$@" >"$_rb_out" 2>/dev/null &
+  _rb_pid=$!
+
+  ( sleep "$_rb_timeout"; kill "$_rb_pid" 2>/dev/null ) &
+  _rb_killer=$!
+
+  if wait "$_rb_pid" 2>/dev/null; then
+    _rb_rc=0
+  else
+    _rb_rc=$?
+  fi
+
+  # Stop the killer if it's still sleeping; reap it.
+  kill "$_rb_killer" 2>/dev/null || true
+  wait "$_rb_killer" 2>/dev/null || true
+
+  # A process killed by our timer exits with 128+SIGTERM(15)=143. Normalize to
+  # 124 (the conventional "timed out" code) so callers can treat it uniformly.
+  if [ "$_rb_rc" -eq 143 ]; then
+    return 124
+  fi
+  return "$_rb_rc"
+}
+
 path_index() {
   needle=$1
   index=0
@@ -451,6 +485,10 @@ docker_logs() {
   events_log=$log_dir/events.log
   vm_log=$HOME/Library/Containers/com.docker.docker/Data/log/vm/init.log
 
+  # The grep filter pattern lives in a variable used BOTH to launch grep and
+  # to find+kill it on cleanup, so the two always match.
+  grep_pattern='opctl_|apiproxy.*POST|level":"(warn|error)'
+
   if [ ! -f "$vm_log" ]; then
     echo "warning: Docker Desktop VM log not found at:" >&2
     echo "  $vm_log" >&2
@@ -468,29 +506,31 @@ docker_logs() {
   echo "Reproduce your hang now. Press Ctrl+C here when done."
   echo
 
-  # Each pipeline runs in its own subshell so we have a single PID to kill.
-  # The subshell on SIGTERM tears down its children (tail, grep) by default
-  # in /bin/sh on macOS (bash). pkill -P as a belt-and-suspenders below.
-  (
-    exec tail -F "$vm_log" 2>/dev/null \
-      | grep --line-buffered -E 'opctl_|apiproxy.*POST|level":"(warn|error)' \
-      > "$apiproxy_log"
-  ) &
-  apiproxy_pid=$!
+  # Launch the tail|grep pipeline and the docker events stream backgrounded.
+  #
+  # IMPORTANT: we do NOT try to clean up by killing a wrapping subshell. On
+  # macOS, when the subshell parent dies the pipeline's children (tail, grep)
+  # get reparented to init (PID 1) and keep running forever — `tail -F` never
+  # exits on its own. We observed this leaking dozens of tail/grep processes
+  # across repeated runs. Instead, cleanup pkills them by their distinctive
+  # command lines, which is robust against reparenting.
+  tail -F "$vm_log" 2>/dev/null \
+    | grep --line-buffered -E "$grep_pattern" > "$apiproxy_log" &
 
-  (
-    exec docker events --filter label=opctl.managed=true > "$events_log"
-  ) &
+  docker events --filter label=opctl.managed=true > "$events_log" &
   events_pid=$!
 
   cleanup_docker_logs() {
     echo
     echo "stopping log streams..."
-    # Kill the subshells; pkill -P chases their children (tail, grep, docker).
-    kill "$apiproxy_pid" "$events_pid" 2>/dev/null || true
-    pkill -P "$apiproxy_pid" 2>/dev/null || true
+    # Kill by distinctive command line — robust against the child-reparenting
+    # described above. Match on a fixed prefix of each command (no regex
+    # metachars) so pkill's pattern engine behaves. NB: if you run two
+    # `make docker-logs` at once, this stops both — fine for a diagnostic tool.
+    pkill -f "tail -F $vm_log" 2>/dev/null || true
+    pkill -f "grep --line-buffered -E opctl_" 2>/dev/null || true
+    kill "$events_pid" 2>/dev/null || true
     pkill -P "$events_pid" 2>/dev/null || true
-    wait "$apiproxy_pid" "$events_pid" 2>/dev/null || true
 
     apiproxy_lines=$(wc -l <"$apiproxy_log" 2>/dev/null | tr -d ' ' || echo 0)
     events_lines=$(wc -l <"$events_log" 2>/dev/null | tr -d ' ' || echo 0)
@@ -521,12 +561,24 @@ docker_daemon_logs() {
   fi
 
   echo "discovering dockerd PID inside the Docker Desktop VM..."
-  # ps inside the privileged-pid=host alpine container reports VM PIDs.
-  # Take the first match because there's only ever one dockerd; trim
-  # leading whitespace from ps's right-aligned PID column.
-  dockerd_pid=$(docker run --rm --privileged --pid=host alpine sh -c \
-    'ps -o pid,comm | awk "/dockerd\$/{print \$1; exit}"' 2>/dev/null \
-    | tr -d ' ')
+  # CRITICAL: this whole approach uses `docker run` to reach the VM. But the
+  # wedge we're often diagnosing is "Docker can't start ANY container" — in
+  # which case `docker run` itself hangs forever (observed). So bound every
+  # `docker run` with a timeout: if it can't start a throwaway container in
+  # 15s, Docker is too wedged to introspect this way and the only recovery is
+  # `make docker-restart`.
+  pid_out=$(mktemp)
+  if ! run_bounded 15 "$pid_out" docker run --rm --privileged --pid=host alpine \
+    sh -c 'ps -o pid,comm | awk "/dockerd\$/{print \$1; exit}"'; then
+    rm -f "$pid_out"
+    echo "✗ 'docker run' to introspect the VM did not return within 15s." >&2
+    echo "  Docker can't start a throwaway container — it's wedged at the" >&2
+    echo "  container-start level, so a goroutine dump isn't reachable this way." >&2
+    echo "  Recovery: make docker-restart" >&2
+    exit 1
+  fi
+  dockerd_pid=$(tr -d ' ' < "$pid_out")
+  rm -f "$pid_out"
   if [ -z "$dockerd_pid" ]; then
     echo "error: could not locate dockerd PID inside the VM" >&2
     echo "  is Docker Desktop running? try \`docker info\`" >&2
@@ -535,7 +587,15 @@ docker_daemon_logs() {
   echo "dockerd PID inside VM: $dockerd_pid"
 
   echo "sending SIGUSR1 → goroutine stack dump..."
-  docker run --rm --privileged --pid=host alpine kill -USR1 "$dockerd_pid"
+  sig_out=$(mktemp)
+  if ! run_bounded 15 "$sig_out" docker run --rm --privileged --pid=host alpine \
+    kill -USR1 "$dockerd_pid"; then
+    rm -f "$sig_out"
+    echo "✗ 'docker run' to signal dockerd did not return within 15s — Docker is wedged." >&2
+    echo "  Recovery: make docker-restart" >&2
+    exit 1
+  fi
+  rm -f "$sig_out"
 
   # Give dockerd a moment to actually write the dump.
   sleep 2
