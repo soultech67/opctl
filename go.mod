@@ -40,6 +40,7 @@ require (
 	golang.org/x/term v0.37.0
 	golang.zx2c4.com/wireguard v0.0.0-20231211153847-12269c276173
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20230429144221-925a1e7659e6
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	k8s.io/api v0.29.3
 	k8s.io/apimachinery v0.29.3
 	k8s.io/client-go v0.29.3

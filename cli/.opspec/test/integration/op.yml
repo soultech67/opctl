@@ -1,0 +1,36 @@
+name: integration
+description: |
+  runs the CLI end-to-end (ginkgo) specs in cli_test.go, which require a
+  container runtime (they spin up a real opctl node). The unit op skips these
+  when no runtime is reachable; this op provides one via the host docker socket.
+inputs:
+  dockerSocket:
+    socket:
+      description: docker socket used as the container runtime for the in-test node
+  goBuildCachePath:
+    string:
+      description: Path relative to HOME dir, to use for go build cache e.g., on macOS, Library/Caches/go-build; on Linux, .cache/go-build
+      default: Library/Caches/go-build
+  HOME:
+    dir:
+      description: Home directory of caller; used to access go modules
+run:
+  container:
+    cmd:
+      - go
+      - test
+      - ./cli/
+      - -run
+      - TestCli
+      - -buildvcs=false
+    dirs:
+      /src: $(../../../..)
+      /go/pkg: $(HOME/go/pkg)
+      /root/.cache/go-build: $(HOME/$(goBuildCachePath))
+    sockets:
+      /var/run/docker.sock: $(dockerSocket)
+    envVars:
+      OPCTL_DATA_DIR: /tmp/opctl
+      GOFLAGS: -tags=containers_image_openpgp
+    image: { ref: 'golang:1.25' }
+    workDir: /src

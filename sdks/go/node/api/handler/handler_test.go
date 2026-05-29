@@ -11,6 +11,7 @@ import (
 	dataFakes "github.com/opctl/opctl/sdks/go/node/api/handler/data/fakes"
 	eventsFakes "github.com/opctl/opctl/sdks/go/node/api/handler/events/fakes"
 	livenessFakes "github.com/opctl/opctl/sdks/go/node/api/handler/liveness/fakes"
+	loggingFakes "github.com/opctl/opctl/sdks/go/node/api/handler/logging/fakes"
 	opsFakes "github.com/opctl/opctl/sdks/go/node/api/handler/ops/fakes"
 	coreFakes "github.com/opctl/opctl/sdks/go/node/fakes"
 )
@@ -150,6 +151,35 @@ var _ = Context("Handler", func() {
 
 				/* assert */
 				_, actualHTTPReq := fakeLivenessHandler.HandleArgsForCall(0)
+
+				Expect(actualHTTPReq.URL.Path).To(Equal(expectedURLPath))
+
+				// this works because our URL path set mutates the httpRequest
+				Expect(actualHTTPReq).To(Equal(providedHTTPReq))
+			})
+		})
+		Context("next URL path segment is logging", func() {
+			It("should call loggingHandler.Handle w/ expected args", func() {
+				/* arrange */
+				fakeLoggingHandler := new(loggingFakes.FakeHandler)
+
+				objectUnderTest := _handler{
+					loggingHandler: fakeLoggingHandler,
+				}
+
+				providedPath := "logging/dummy"
+				providedHTTPReq, err := http.NewRequest("dummyMethod", providedPath, nil)
+				if err != nil {
+					panic(err.Error())
+				}
+
+				expectedURLPath := strings.SplitN(providedPath, "/", 2)[1]
+
+				/* act */
+				objectUnderTest.ServeHTTP(httptest.NewRecorder(), providedHTTPReq)
+
+				/* assert */
+				_, actualHTTPReq := fakeLoggingHandler.HandleArgsForCall(0)
 
 				Expect(actualHTTPReq.URL.Path).To(Equal(expectedURLPath))
 

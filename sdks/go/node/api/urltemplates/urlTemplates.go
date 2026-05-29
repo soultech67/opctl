@@ -8,6 +8,7 @@ const (
 	Data_Ref      string = "/data/{ref}"
 	Events_Stream string = "/events/stream"
 	Liveness      string = "/liveness"
+	Logging       string = "/logging"
 	Ops_Kills     string = "/ops/kills"
 	Ops_Starts    string = "/ops/starts"
 )

@@ -9,6 +9,7 @@ import (
 	"github.com/opctl/opctl/sdks/go/node/api/handler/data"
 	"github.com/opctl/opctl/sdks/go/node/api/handler/events"
 	"github.com/opctl/opctl/sdks/go/node/api/handler/liveness"
+	"github.com/opctl/opctl/sdks/go/node/api/handler/logging"
 	"github.com/opctl/opctl/sdks/go/node/api/handler/ops"
 )
 
@@ -25,6 +26,7 @@ func New(
 		dataHandler:     data.NewHandler(node),
 		eventsHandler:   events.NewHandler(node),
 		livenessHandler: liveness.NewHandler(node),
+		loggingHandler:  logging.NewHandler(),
 		opsHandler:      ops.NewHandler(node),
 	}
 }
@@ -34,6 +36,7 @@ type _handler struct {
 	dataHandler     data.Handler
 	eventsHandler   events.Handler
 	livenessHandler liveness.Handler
+	loggingHandler  logging.Handler
 	opsHandler      ops.Handler
 }
 
@@ -59,6 +62,8 @@ func (hdlr _handler) ServeHTTP(
 		hdlr.eventsHandler.Handle(httpResp, httpReq)
 	case "liveness":
 		hdlr.livenessHandler.Handle(httpResp, httpReq)
+	case "logging":
+		hdlr.loggingHandler.Handle(httpResp, httpReq)
 	case "ops":
 		hdlr.opsHandler.Handle(httpResp, httpReq)
 	default:

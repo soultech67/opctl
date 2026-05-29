@@ -3,7 +3,7 @@ package node
 import (
 	"context"
 	"errors"
-	"fmt"
+	"log/slog"
 	"runtime/debug"
 	"time"
 
@@ -93,7 +93,13 @@ func (pc _parallelCaller) Call(
 			defer func() {
 				if panic := recover(); panic != nil {
 					// recover from panics; treat as errors
-					fmt.Printf("recovered from panic: %s\n%s\n", panic, string(debug.Stack()))
+					slog.Error(
+						"recovered from panic in parallel child call",
+						"rootCallID", rootCallID,
+						"opRef", opPath,
+						"panic", panic,
+						"stack", string(debug.Stack()),
+					)
 
 					// cancel all children on any error
 					cancelParallel()
@@ -114,8 +120,7 @@ func (pc _parallelCaller) Call(
 	}
 
 	// subscribe to events
-	// @TODO: handle err channel
-	eventChannel, _ := pc.pubSub.Subscribe(
+	eventChannel, subErr := pc.pubSub.Subscribe(
 		// don't cancel w/ children; we need to read err msgs
 		parentCtx,
 		model.EventFilter{
@@ -123,6 +128,15 @@ func (pc _parallelCaller) Call(
 			Since: &startTime,
 		},
 	)
+	if subErr != nil {
+		// deferred cancelParallel() (above) cancels any launched children
+		slog.Error(
+			"parallelCaller: failed to subscribe to event stream",
+			"rootCallID", rootCallID,
+			"error", subErr,
+		)
+		return nil, subErr
+	}
 
 	var isChildErred = false
 	outputs := map[string]*model.Value{}

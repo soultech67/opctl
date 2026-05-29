@@ -2,8 +2,10 @@ package main
 
 import (
 	"io"
+	"net/http"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -11,6 +13,12 @@ import (
 )
 
 var pathToOpctl string
+
+// nodeAvailable reports whether a reachable opctl node (i.e. a working container
+// runtime) is present. The node-dependent specs below are skipped when it isn't
+// — e.g. in the Docker-less `cli unit` op. They are exercised by the cli
+// integration op (cli/.opspec/test/integration), which provides a runtime.
+var nodeAvailable bool
 
 var _ = BeforeSuite(func() {
 	compiledPath, err := gexec.Build("./", "-buildvcs=false")
@@ -20,14 +28,40 @@ var _ = BeforeSuite(func() {
 
 	pathToOpctl = filepath.Join(compiledPath, "cli")
 
-	// start node
+	// start node (no-op if one is already running)
 	command := exec.Command(pathToOpctl, "node", "create")
 	if _, err := gexec.Start(command, io.Discard, io.Discard); err != nil {
 		panic(err)
 	}
+
+	nodeAvailable = waitForNodeLiveness(10 * time.Second)
 })
 
+// waitForNodeLiveness polls the node API liveness endpoint until it responds
+// 200 or the timeout elapses.
+func waitForNodeLiveness(timeout time.Duration) bool {
+	httpClient := &http.Client{Timeout: time.Second}
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		resp, err := httpClient.Get("http://127.0.0.1:42224/api/liveness")
+		if err == nil {
+			resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				return true
+			}
+		}
+		time.Sleep(250 * time.Millisecond)
+	}
+	return false
+}
+
 var _ = Context("cli", func() {
+	BeforeEach(func() {
+		if !nodeAvailable {
+			Skip("requires a reachable opctl node (container runtime); exercised by the cli integration op")
+		}
+	})
+
 	Context("--no-color", func() {
 		It("should not err", func() {
 			/* arrange */
@@ -335,27 +369,29 @@ testdata/ls/op1	A single line description
 		Context("w/ mountRef", func() {
 			It("should not err", func() {
 				/* arrange */
-				command := exec.Command(pathToOpctl, "ui", "../.opspec/build")
+				// --no-open: print the URL instead of spawning a browser tab
+				command := exec.Command(pathToOpctl, "ui", "--no-open", "../.opspec/build")
 
 				/* act */
 				session, actualErr := gexec.Start(command, GinkgoWriter, GinkgoWriter)
 
 				/* assert */
 				Expect(actualErr).NotTo(HaveOccurred())
-				Eventually(session, 10).Should(gexec.Exit(1))
+				Eventually(session, 10).Should(gexec.Exit(0))
 			})
 		})
 		Context("w/out mountRef", func() {
 			It("should not err", func() {
 				/* arrange */
-				command := exec.Command(pathToOpctl, "ui")
+				// --no-open: print the URL instead of spawning a browser tab
+				command := exec.Command(pathToOpctl, "ui", "--no-open")
 
 				/* act */
 				session, actualErr := gexec.Start(command, GinkgoWriter, GinkgoWriter)
 
 				/* assert */
 				Expect(actualErr).NotTo(HaveOccurred())
-				Eventually(session, 10).Should(gexec.Exit(1))
+				Eventually(session, 10).Should(gexec.Exit(0))
 			})
 		})
 	})

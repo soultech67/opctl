@@ -29,7 +29,7 @@ build: ## Cross-compile the CLI for all platforms via `opctl run compile`; warns
 
 bld: build ## Alias for `build`.
 
-install: ## Delete the running node, back up the existing opctl (once), install ./cli/opctl-$(GOOS)-$(GOARCH).
+install: build ## Build (passing VERSION), delete the running node, back up the existing opctl (once), then install ./cli/opctl-$(GOOS)-$(GOARCH).
 	@GOOS="$(GOOS)" GOARCH="$(GOARCH)" SRC_BIN="$(SRC_BIN)" PREFIX="$(PREFIX)" ./make.sh install
 
 uninstall: ## Delete the running node and restore the highest-version opctl-* backup over the current binary.
@@ -70,7 +70,7 @@ clean: ## Remove cross-compiled CLI binaries and orphaned opctl-managed containe
 
 test: ## Run the full test suite via `opctl run test` (PAT minted by `astro auth github`).
 	@command -v astro >/dev/null || { echo "error: 'astro' not on PATH" >&2; exit 1; }
-	opctl run -a githubAccessToken=$$(astro auth github) -a githubAuthTestOpRef="$(GITHUB_AUTH_TEST_OP_REF)" test
+	opctl run -a githubAccessToken=$$(astro auth github) -a githubAuthTestOpRef="$(GITHUB_AUTH_TEST_OP_REF)" -a dockerSocket=/var/run/docker.sock test
 
 release: ## Run the release op via `opctl run release` (PAT from astro, user from active gh login / soultech67).
 	@command -v astro >/dev/null || { echo "error: 'astro' not on PATH" >&2; exit 1; }

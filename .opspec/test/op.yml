@@ -13,6 +13,9 @@ inputs:
       default: github.com/soultech67/test-suite-auth#1.0.0
       constraints:
         minLength: 1
+  dockerSocket:
+    socket:
+      description: docker socket used as the container runtime for the CLI integration tests
   goBuildCachePath:
     string:
       description: Path relative to HOME dir, to use for go build cache e.g., on macOS, Library/Caches/go-build; on Linux, .cache/go-build
@@ -31,6 +34,11 @@ run:
         - op:
             ref: $(../../cli/.opspec/test/unit)
             inputs:
+              HOME:
+        - op:
+            ref: $(../../cli/.opspec/test/integration)
+            inputs:
+              dockerSocket:
               HOME:
         - op:
             ref: $(../../cli/.opspec/test/e2e)

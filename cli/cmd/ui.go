@@ -21,7 +21,9 @@ func newUICmd(
 ) *cobra.Command {
 	mountRefArgName := "MOUNT_REF"
 
-	return &cobra.Command{
+	var noOpen bool
+
+	uiCmd := &cobra.Command{
 		Args: cobra.MaximumNArgs(1),
 		Example: `# Open the opctl web UI to the current working directory.
 opctl ui
@@ -80,10 +82,17 @@ opctl ui github.com/opspec-pkgs/github.release.create#3.0.0
 				resolvedMount = mountHandle.Ref()
 			}
 
-			err = open.Run(
-				fmt.Sprintf("http://%s/?mount=%s", nodeConfig.APIListenAddress, url.QueryEscape(resolvedMount)),
-			)
-			if err != nil {
+			uiURL := fmt.Sprintf("http://%s/?mount=%s", nodeConfig.APIListenAddress, url.QueryEscape(resolvedMount))
+
+			if noOpen {
+				// headless / scripted use: surface the URL instead of hijacking
+				// the user's browser. Also used by the CLI test suite so runs
+				// don't spawn browser tabs.
+				cliOutput.Success(fmt.Sprintf("Opctl web UI available at %s", uiURL))
+				return nil
+			}
+
+			if err = open.Run(uiURL); err != nil {
 				return err
 			}
 
@@ -92,4 +101,13 @@ opctl ui github.com/opspec-pkgs/github.release.create#3.0.0
 			return nil
 		},
 	}
+
+	uiCmd.Flags().BoolVar(
+		&noOpen,
+		"no-open",
+		false,
+		"Print the web UI URL instead of opening it in the default browser",
+	)
+
+	return uiCmd
 }

@@ -32,6 +32,16 @@ var daemonEnvPassThroughVars = []string{
 	// Multiplier (default 1.0) applied to every Docker API timeout. Useful on
 	// slow CI / underpowered machines. See timeouts.go.
 	"OPCTL_DOCKER_TIMEOUT_MULTIPLIER",
+	// Daemon logging controls. See sdks/go/node/logging and docs/environment-variables.md.
+	// Note: these set startup defaults; level/enablement can also be changed at
+	// runtime (no restart) via `opctl doctor log-level` / `opctl doctor logs`.
+	"OPCTL_LOG",        // master on/off (default on)
+	"OPCTL_LOG_LEVEL",  // debug|info|warn|error (default info)
+	"OPCTL_LOG_FORMAT", // text|json (default text)
+	"OPCTL_LOG_FILE",   // override log file path (default <data-dir>/logs/node.log)
+	// Enables the localhost-only /debug/pprof endpoints on the API server.
+	// See sdks/go/node/api/listen.go.
+	"OPCTL_DEBUG_PPROF",
 }
 
 func (np nodeProvider) CreateNodeIfNotExists(

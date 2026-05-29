@@ -2,6 +2,7 @@ package node
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -40,6 +41,14 @@ func newCreateCmd(
 				return err
 			}
 
+			slog.Info(
+				"opctl node starting",
+				"dataDir", dataDir.Path(),
+				"apiListenAddress", nodeConfig.APIListenAddress,
+				"dnsListenAddress", nodeConfig.DNSListenAddress,
+				"containerRuntime", nodeConfig.ContainerRuntime,
+			)
+
 			gotLock, err := pidfile.TryGetLock(
 				ctx,
 				nodeConfig.DataDir,
@@ -63,6 +72,7 @@ func newCreateCmd(
 					fmt.Println(
 						cliColorer.Info(fmt.Sprintf("opctl API listening at %s", nodeConfig.APIListenAddress)),
 					)
+					slog.Info("opctl API listening", "address", nodeConfig.APIListenAddress)
 
 					c, err := core.New(
 						ctx,
@@ -86,6 +96,7 @@ func newCreateCmd(
 					fmt.Println(
 						cliColorer.Info(fmt.Sprintf("opctl DNS listening at %s", nodeConfig.DNSListenAddress)),
 					)
+					slog.Info("opctl DNS listening", "address", nodeConfig.DNSListenAddress)
 
 					return dns.Listen(
 						ctx,

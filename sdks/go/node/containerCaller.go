@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"time"
 
 	"github.com/opctl/opctl/sdks/go/model"
@@ -85,6 +86,16 @@ func (cc _containerCaller) Call(
 		containerCall,
 	)
 
+	imageRef := ""
+	if containerCall.Image.Ref != nil {
+		imageRef = *containerCall.Image.Ref
+	}
+
+	slog.Debug("container call starting",
+		"containerID", containerCall.ContainerID, "image", imageRef,
+		"opRef", containerCall.OpPath, "rootCallID", rootCallID)
+
+	runStartedAt := time.Now()
 	rawExitCode, err := cc.containerRuntime.RunContainer(
 		ctx,
 		containerCall,
@@ -93,6 +104,7 @@ func (cc _containerCaller) Call(
 		logStdOutPW,
 		logStdErrPW,
 	)
+	runDuration := time.Since(runStartedAt)
 
 	// @TODO: handle no exit code
 	if rawExitCode != nil {
@@ -101,6 +113,19 @@ func (cc _containerCaller) Call(
 
 	if exitCode != 0 {
 		err = fmt.Errorf("nonzero container exit code: %d", exitCode)
+	}
+
+	if err != nil {
+		slog.Warn("container call ended",
+			"containerID", containerCall.ContainerID, "image", imageRef,
+			"opRef", containerCall.OpPath, "rootCallID", rootCallID,
+			"exitCode", exitCode, "exitCodeKnown", rawExitCode != nil,
+			"duration", runDuration.String(), "error", err.Error())
+	} else {
+		slog.Debug("container call ended",
+			"containerID", containerCall.ContainerID, "image", imageRef,
+			"opRef", containerCall.OpPath, "rootCallID", rootCallID,
+			"exitCode", exitCode, "duration", runDuration.String())
 	}
 
 	// wait on logChan

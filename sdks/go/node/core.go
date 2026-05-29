@@ -6,6 +6,7 @@ package node
 import (
 	"context"
 	"log"
+	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
@@ -86,12 +87,16 @@ func New(
 		)
 
 		since := time.Now().UTC()
-		eventChannel, _ := pubSub.Subscribe(
+		eventChannel, subErr := pubSub.Subscribe(
 			ctx,
 			model.EventFilter{
 				Since: &since,
 			},
 		)
+		if subErr != nil {
+			slog.Error("core: failed to subscribe to kill-request event stream", "error", subErr)
+			return
+		}
 
 		for event := range eventChannel {
 			switch {
