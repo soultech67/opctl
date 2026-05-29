@@ -2,11 +2,17 @@ name: test
 description: runs all tests
 inputs:
   githubAccessToken:
-    description: accessToken for cloning the private auth test op repo
+    description: accessToken for cloning the private auth test op repo (only used by the CLI e2e suite; may be empty when runCliE2e is "false")
     string:
       isSecret: true
-      constraints:
-        minLength: 1
+      default: ""
+  runCliE2e:
+    description: |
+      Whether to run the CLI e2e (docker-in-docker) suite. Defaults to "false"
+      because nested docker-in-docker is unreliable on macOS Docker Desktop;
+      `make test` sets this to "true" only in CI (CI=true).
+    string:
+      default: "false"
   githubAuthTestOpRef:
     description: private op ref used by auth test scenarios
     string:
@@ -40,7 +46,12 @@ run:
             inputs:
               dockerSocket:
               HOME:
-        - op:
+        # e2e is docker-in-docker; only run it in CI (set via `make test`).
+        # Nested dind inside opctl's macOS WireGuard network is unreliable
+        # locally, so it's gated off by default.
+        - if:
+            - eq: [$(runCliE2e), "true"]
+          op:
             ref: $(../../cli/.opspec/test/e2e)
             inputs:
               githubAccessToken:

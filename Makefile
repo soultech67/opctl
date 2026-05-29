@@ -2,6 +2,11 @@ VERSION ?= 0.0.0
 SELF_UPDATE_REPO ?= soultech67/opctl
 GITHUB_AUTH_TEST_OP_REF ?= github.com/soultech67/test-suite-auth\#1.0.0
 
+# Run the CLI e2e (docker-in-docker) suite only in CI by default; it's
+# unreliable locally (nested dind inside opctl's macOS WireGuard network).
+# CI providers set CI=true. Override with `make test RUN_CLI_E2E=true` to force.
+RUN_CLI_E2E ?= $(if $(filter true,$(CI)),true,false)
+
 # Host detection used by `install`. Override on the command line if you need
 # to install a non-host binary, e.g. `make install GOOS=linux GOARCH=arm64`.
 GOOS     ?= $(shell uname -s | tr '[:upper:]' '[:lower:]')
@@ -68,9 +73,15 @@ clean: ## Remove cross-compiled CLI binaries and orphaned opctl-managed containe
 	   echo "no orphaned opctl-managed containers"; \
 	 fi
 
-test: ## Run the full test suite via `opctl run test` (PAT minted by `astro auth github`).
-	@command -v astro >/dev/null || { echo "error: 'astro' not on PATH" >&2; exit 1; }
-	opctl run -a githubAccessToken=$$(astro auth github) -a githubAuthTestOpRef="$(GITHUB_AUTH_TEST_OP_REF)" -a dockerSocket=/var/run/docker.sock test
+test: ## Run the test suite. CLI e2e (dind) runs only when RUN_CLI_E2E=true (default: true in CI, false locally); that path mints a PAT via `astro auth github`.
+	@if [ "$(RUN_CLI_E2E)" = "true" ]; then \
+	   command -v astro >/dev/null || { echo "error: 'astro' not on PATH (needed for CLI e2e)" >&2; exit 1; }; \
+	   token=$$(astro auth github); \
+	 else \
+	   echo "skipping CLI e2e (RUN_CLI_E2E=$(RUN_CLI_E2E)); set RUN_CLI_E2E=true to include it"; \
+	   token=""; \
+	 fi; \
+	 opctl run -a githubAccessToken="$$token" -a githubAuthTestOpRef="$(GITHUB_AUTH_TEST_OP_REF)" -a dockerSocket=/var/run/docker.sock -a runCliE2e=$(RUN_CLI_E2E) test
 
 release: ## Run the release op via `opctl run release` (PAT from astro, user from active gh login / soultech67).
 	@command -v astro >/dev/null || { echo "error: 'astro' not on PATH" >&2; exit 1; }

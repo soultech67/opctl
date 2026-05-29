@@ -25,6 +25,7 @@ func NewDoctorCmd(
 
 	doctorCmd.AddCommand(newLogsCmd(nodeConfig))
 	doctorCmd.AddCommand(newLogLevelCmd(nodeConfig))
+	doctorCmd.AddCommand(newTailLogsCmd(nodeConfig))
 
 	return doctorCmd
 }
