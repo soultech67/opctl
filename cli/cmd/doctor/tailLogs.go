@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 
 	"github.com/opctl/opctl/cli/internal/nodeprovider/local"
+	"github.com/opctl/opctl/sdks/go/node/logging"
 	"github.com/spf13/cobra"
 )
 
@@ -66,5 +66,5 @@ func resolveLogFilePath(
 			return state.Filepath
 		}
 	}
-	return filepath.Join(nodeConfig.DataDir, "logs", "node.log")
+	return logging.LogFilePath(nodeConfig.DataDir)
 }

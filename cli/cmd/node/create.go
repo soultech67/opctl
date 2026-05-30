@@ -32,6 +32,14 @@ func newCreateCmd(
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
+			// The daemon's stdout/stderr may be a pipe to the short-lived
+			// `opctl run` that spawned it (see the local node provider). When
+			// that process exits the pipe breaks, and the next write to fd 1/2
+			// would otherwise raise SIGPIPE — fatal by default — silently
+			// killing the daemon. Ignore it so such writes just fail with EPIPE
+			// while the daemon keeps running and logging to its file.
+			signal.Ignore(syscall.SIGPIPE)
+
 			if err := euid0.Ensure(); err != nil {
 				return err
 			}

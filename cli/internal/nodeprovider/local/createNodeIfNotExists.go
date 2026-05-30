@@ -16,6 +16,7 @@ import (
 
 	"github.com/opctl/opctl/cli/internal/euid0"
 	"github.com/opctl/opctl/sdks/go/node"
+	"github.com/opctl/opctl/sdks/go/node/logging"
 )
 
 // daemonEnvPassThroughVars lists OPCTL_* env vars whose values must reach the
@@ -86,7 +87,23 @@ func (np nodeProvider) CreateNodeIfNotExists(
 		"create",
 	)
 
-	cmd.Stdout = os.Stdout
+	// Point the daemon's stdout at its durable log file rather than the
+	// spawning terminal. Diagnostics that bypass the logger and fmt.Print
+	// straight to stdout (e.g. panic recoveries in the op/runtime code) are then
+	// captured for post-mortem instead of vanishing with the terminal. A regular
+	// file (unlike the terminal or a pipe) never breaks, so this also keeps
+	// stdout off the list of things that can SIGPIPE the daemon. Best-effort: if
+	// the log file can't be opened yet (e.g. logs dir not created on first run),
+	// fall back to /dev/null (nil) — the daemon's own logger still writes it.
+	if logF, openErr := os.OpenFile(
+		logging.LogFilePath(np.config.DataDir),
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
+		0o600,
+	); openErr == nil {
+		cmd.Stdout = logF
+	} else {
+		cmd.Stdout = nil
+	}
 
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -109,8 +126,13 @@ func (np nodeProvider) CreateNodeIfNotExists(
 	}
 
 	cmd.SysProcAttr = &syscall.SysProcAttr{
-		// own process group
-		Setpgid: true,
+		// Run the daemon in a new session: its own session and process group,
+		// with no controlling terminal. Without this the daemon stayed in the
+		// spawning shell's session and was taken down when that terminal closed
+		// (SIGHUP) or on Ctrl-C (SIGINT to the terminal's foreground group),
+		// killing every running op with it. The daemon is signalled by PID
+		// (pidfile.TryGetProcess), so dropping the explicit process group is safe.
+		Setsid: true,
 	}
 
 	ctx, cancel := context.WithCancel(ctx)

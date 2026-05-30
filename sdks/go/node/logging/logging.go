@@ -100,15 +100,7 @@ func Init(dataDirPath string) error {
 	mu.Lock()
 	defer mu.Unlock()
 
-	resolvedDataDir, err := filepath.Abs(dataDirPath)
-	if err != nil {
-		return err
-	}
-
-	logFile = strings.TrimSpace(os.Getenv(EnvFile))
-	if logFile == "" {
-		logFile = filepath.Join(resolvedDataDir, logsDirName, logFileName)
-	}
+	logFile = LogFilePath(dataDirPath)
 
 	// create the logs dir as the invoking (non-root) user, matching how the
 	// data dir itself is created; the daemon runs as root.
@@ -160,7 +152,13 @@ func Init(dataDirPath string) error {
 		}
 	}
 
-	out := gatedWriter{inner: io.MultiWriter(os.Stderr, rotatingWriter)}
+	// File first, stderr second. The daemon's stderr is often a pipe to the
+	// short-lived `opctl run` that spawned it; once that exits the pipe breaks
+	// and writes to it error. io.MultiWriter stops at the first write error, so
+	// if stderr came first a broken pipe would also silence the durable file
+	// log (the "log cut off mid-shutdown" symptom). Writing the file first
+	// keeps post-mortem logging intact regardless of stderr's state.
+	out := gatedWriter{inner: io.MultiWriter(rotatingWriter, os.Stderr)}
 
 	handlerOpts := &slog.HandlerOptions{Level: levelVar}
 	var handler slog.Handler
@@ -176,6 +174,21 @@ func Init(dataDirPath string) error {
 	log.SetOutput(out)
 
 	return nil
+}
+
+// LogFilePath returns the path the daemon logs to for the given data dir:
+// OPCTL_LOG_FILE if set, otherwise <dataDir>/logs/node.log. It is the single
+// source of truth shared by Init (the daemon side) and the local node provider,
+// which points the spawned daemon's stdout at this same file.
+func LogFilePath(dataDir string) string {
+	if f := strings.TrimSpace(os.Getenv(EnvFile)); f != "" {
+		return f
+	}
+	abs, err := filepath.Abs(dataDir)
+	if err != nil {
+		abs = dataDir
+	}
+	return filepath.Join(abs, logsDirName, logFileName)
 }
 
 // SetLevel changes the active minimum log level at runtime. level is one of
