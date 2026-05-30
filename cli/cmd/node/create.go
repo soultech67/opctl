@@ -108,6 +108,14 @@ func newCreateCmd(
 			err = eg.Wait()
 			stop()
 
+			// Record why the daemon's server loop ended so an unexpected exit
+			// (the non-panic "daemon vanished" mode) leaves a post-mortem trace.
+			if err != nil {
+				slog.Error("opctl node stopping: server loop returned an error", "error", err)
+			} else {
+				slog.Info("opctl node stopping")
+			}
+
 			return err
 		},
 	}

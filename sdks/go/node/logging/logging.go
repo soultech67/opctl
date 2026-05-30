@@ -24,6 +24,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -69,6 +70,7 @@ var (
 	logFile               string
 	logFormat             = formatText
 	currentRotatingWriter *lumberjack.Logger // closed & replaced on re-Init
+	currentCrashFile      *os.File           // SetCrashOutput target; closed & replaced on re-Init
 )
 
 // gatedWriter forwards writes to inner only while logging is enabled. When
@@ -140,6 +142,23 @@ func Init(dataDirPath string) error {
 		Compress:   compressLogs,
 	}
 	currentRotatingWriter = rotatingWriter
+
+	// Capture Go runtime panics / fatal errors into the durable log too. These
+	// bypass slog (the runtime writes them straight to fd 2), so for a
+	// backgrounded daemon they'd otherwise vanish — exactly the "daemon
+	// vanished mid-op, no trace" case. SetCrashOutput tees the crash report to
+	// this file in addition to stderr. Not gated by `enabled`: a crash is
+	// always worth a post-mortem. Best-effort; ignore setup failures.
+	if crashFile, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600); err == nil {
+		if err := debug.SetCrashOutput(crashFile, debug.CrashOptions{}); err == nil {
+			if currentCrashFile != nil {
+				currentCrashFile.Close()
+			}
+			currentCrashFile = crashFile
+		} else {
+			crashFile.Close()
+		}
+	}
 
 	out := gatedWriter{inner: io.MultiWriter(os.Stderr, rotatingWriter)}
 
