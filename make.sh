@@ -350,10 +350,16 @@ install_opctl() {
   dest=$prefix/opctl
 
   if [ -n "$existing_opctl" ] && [ -f "$existing_opctl" ]; then
-    echo "running 'sudo $existing_opctl node delete' (requires root)..."
-    sudo "$existing_opctl" node delete
+    # Stop the daemon (so the next run picks up the new binary) but KEEP the
+    # data dir. `node delete` would rm -rf it, and on macOS Docker Desktop's
+    # VirtioFS that delete+recreate trips a stale-inode bug surfacing as
+    # "bind source path does not exist" on the next run (see
+    # docs/macos-docker-filesystem.md). Keeping the data dir also preserves
+    # event history and the node log across dev installs.
+    echo "running 'sudo $existing_opctl node kill' to stop the running daemon (requires root)..."
+    sudo "$existing_opctl" node kill
   else
-    echo "opctl not on PATH; skipping 'node delete'"
+    echo "opctl not on PATH; skipping node stop"
   fi
 
   if [ -z "${PREFIX:-}" ] && [ -z "$existing_opctl" ] && [ ! -d "$HOME/bin" ] && [ ! -d "$HOME/.local/bin" ]; then

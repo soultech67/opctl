@@ -34,7 +34,7 @@ build: ## Cross-compile the CLI for all platforms via `opctl run compile`; warns
 
 bld: build ## Alias for `build`.
 
-install: build ## Build (passing VERSION), delete the running node, back up the existing opctl (once), then install ./cli/opctl-$(GOOS)-$(GOARCH).
+install: build ## Build (passing VERSION), stop the running node (keeping its data dir), back up the existing opctl (once), then install ./cli/opctl-$(GOOS)-$(GOARCH).
 	@GOOS="$(GOOS)" GOARCH="$(GOARCH)" SRC_BIN="$(SRC_BIN)" PREFIX="$(PREFIX)" ./make.sh install
 
 uninstall: ## Delete the running node and restore the highest-version opctl-* backup over the current binary.
