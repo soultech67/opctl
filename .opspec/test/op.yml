@@ -31,57 +31,70 @@ inputs:
       description: Home directory of caller; used to access go modules
 
 run:
-  parallel:
-    # api tests
-    - op:
-        ref: $(../../api/.opspec/test)
-    # CLI tests
-    - serial:
-        - op:
-            ref: $(../../cli/.opspec/test/unit)
-            inputs:
-              HOME:
-        - op:
-            ref: $(../../cli/.opspec/test/integration)
-            inputs:
-              dockerSocket:
-              HOME:
-        # e2e is docker-in-docker; only run it in CI (set via `make test`).
-        # Nested dind inside opctl's macOS WireGuard network is unreliable
-        # locally, so it's gated off by default.
+  serial:
+    # Generate the build artifacts the Go suites compile against via //go:embed
+    # (webapp/build for the UI, lima guest-agent binaries for the embedded
+    # runtime). Without these, `go test ./cli/...` / `./sdks/go/...` fail to
+    # compile (FAIL ... [setup failed]) on a fresh checkout / in CI. Gated on
+    # existence so it's a no-op locally once the artifacts are present.
+    - parallel:
         - if:
-            - eq: [$(runCliE2e), "true"]
+            - notExists: $(../../webapp/build)
           op:
-            ref: $(../../cli/.opspec/test/e2e)
+            ref: $(../../webapp/.opspec/compile)
+        - op:
+            ref: $(../../sdks/go/node/containerruntime/embedded/.opspec/generateEmbeds)
+    - parallel:
+        # api tests
+        - op:
+            ref: $(../../api/.opspec/test)
+        # CLI tests
+        - serial:
+            - op:
+                ref: $(../../cli/.opspec/test/unit)
+                inputs:
+                  HOME:
+            - op:
+                ref: $(../../cli/.opspec/test/integration)
+                inputs:
+                  dockerSocket:
+                  HOME:
+            # e2e is docker-in-docker; only run it in CI (set via `make test`).
+            # Nested dind inside opctl's macOS WireGuard network is unreliable
+            # locally, so it's gated off by default.
+            - if:
+                - eq: [$(runCliE2e), "true"]
+              op:
+                ref: $(../../cli/.opspec/test/e2e)
+                inputs:
+                  githubAccessToken:
+                  githubAuthTestOpRef:
+        # opspec tests
+        - op:
+            ref: $(../../opspec/opfile/.opspec/test)
+        # webapp tests
+        - op:
+            ref: $(../../webapp/.opspec/test)
+        # go SDK tests
+        - op:
+            ref: $(../../sdks/go/.opspec/test)
             inputs:
-              githubAccessToken:
-              githubAuthTestOpRef:
-    # opspec tests
-    - op:
-        ref: $(../../opspec/opfile/.opspec/test)
-    # webapp tests
-    - op:
-        ref: $(../../webapp/.opspec/test)
-    # go SDK tests
-    - op:
-        ref: $(../../sdks/go/.opspec/test)
-        inputs:
-          HOME:
-    # js SDK tests
-    - op:
-        ref: $(../../sdks/js/.opspec/test)
-    # check go fmt has been run
-    - container:
-        cmd:
-          - sh
-          - -ce
-          - |
-            test -z "\$(gofmt -d -l ./cli ./sdks/go | tee /tmp/output)" || (echo "Fix formatting issues with 'opctl run format'" && cat /tmp/output && exit 1)
-        dirs:
-          /src: $(../..)
-          /go/pkg: $(HOME/go/pkg)
-          /root/.cache/go-build: $(HOME/$(goBuildCachePath))
-        envVars:
-          GOFLAGS: -tags=containers_image_openpgp
-        image: { ref: "golang:1.25" }
-        workDir: /src
+              HOME:
+        # js SDK tests
+        - op:
+            ref: $(../../sdks/js/.opspec/test)
+        # check go fmt has been run
+        - container:
+            cmd:
+              - sh
+              - -ce
+              - |
+                test -z "\$(gofmt -d -l ./cli ./sdks/go | tee /tmp/output)" || (echo "Fix formatting issues with 'opctl run format'" && cat /tmp/output && exit 1)
+            dirs:
+              /src: $(../..)
+              /go/pkg: $(HOME/go/pkg)
+              /root/.cache/go-build: $(HOME/$(goBuildCachePath))
+            envVars:
+              GOFLAGS: -tags=containers_image_openpgp
+            image: { ref: "golang:1.25" }
+            workDir: /src
