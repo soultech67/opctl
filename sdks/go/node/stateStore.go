@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"strconv"
 	"strings"
 	"sync"
@@ -199,25 +200,32 @@ func (ss *_stateStore) TryGet(
 
 func (ss *_stateStore) ListAuths() []model.Auth {
 	auths := []model.Auth{}
-	ss.db.View(func(txn *badger.Txn) error {
+	err := ss.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		it := txn.NewIterator(opts)
 		defer it.Close()
 
 		prefixBytes := []byte(ss.authsByResourcesKeyPrefix)
 		for it.Seek(prefixBytes); it.ValidForPrefix(prefixBytes); it.Next() {
-			it.Item().Value(func(value []byte) error {
+			if err := it.Item().Value(func(value []byte) error {
 				auth := model.Auth{}
 				if err := json.Unmarshal(value, &auth); err != nil {
 					return err
 				}
 				auths = append(auths, auth)
 				return nil
-			})
+			}); err != nil {
+				return err
+			}
 		}
 
 		return nil
 	})
+	if err != nil {
+		// surface read/decode failures rather than silently returning a partial
+		// or empty list (which would mislead the auth list API/CLI).
+		slog.Error("error listing stored auths", "error", err)
+	}
 
 	return auths
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"os/exec"
 	"runtime"
 	"runtime/debug"
@@ -228,7 +229,10 @@ func wgUp(
 			go func(conn net.Conn) {
 				defer func() {
 					if panicValue := recover(); panicValue != nil {
-						fmt.Printf("[opctl docker] recovered from wireguard IpcHandle panic: %s\n%s\n", panicValue, string(debug.Stack()))
+						// route through the stdlib logger (redirected to the daemon's
+						// rotating log + stderr) rather than fmt.Printf to stdout, which
+						// may be /dev/null for a detached daemon.
+						log.Printf("[opctl docker] recovered from wireguard IpcHandle panic: %s\n%s", panicValue, string(debug.Stack()))
 					}
 				}()
 				wgDevice.IpcHandle(conn)

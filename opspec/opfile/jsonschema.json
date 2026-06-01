@@ -994,15 +994,15 @@
                 },
                 "maxSizeMB": {
                   "description": "Max size (MB) of a stdout.log/stderr.log before rotation. Default 50.",
-                  "type": "number"
+                  "type": "integer"
                 },
                 "maxBackups": {
                   "description": "Rotated backups to retain per stream. 0 = keep all (subject to maxAgeDays). Default 5.",
-                  "type": "number"
+                  "type": "integer"
                 },
                 "maxAgeDays": {
                   "description": "Max age (days) of rotated backups before deletion. 0 = never delete by age. Default 30.",
-                  "type": "number"
+                  "type": "integer"
                 },
                 "compress": {
                   "description": "gzip rotated backups. Default true.",

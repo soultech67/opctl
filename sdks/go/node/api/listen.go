@@ -105,6 +105,10 @@ func stripPrefixAndRecover(prefix string, h http.Handler) http.Handler {
 			if panic := recover(); panic != nil {
 				slog.Error("recovered from panic in api handler",
 					"path", r.URL.Path, "panic", panic, "stack", string(debug.Stack()))
+				// best-effort: surface a 500 so callers see a failure rather than an
+				// empty/200 response. If the handler already wrote a header this is a
+				// no-op (net/http logs a superfluous-WriteHeader warning, harmless).
+				http.Error(w, "internal server error", http.StatusInternalServerError)
 			}
 		}()
 
