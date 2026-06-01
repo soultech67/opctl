@@ -10,6 +10,7 @@ import (
 	"github.com/opctl/opctl/sdks/go/opspec/interpreter/call/container/envvars"
 	"github.com/opctl/opctl/sdks/go/opspec/interpreter/call/container/files"
 	"github.com/opctl/opctl/sdks/go/opspec/interpreter/call/container/image"
+	"github.com/opctl/opctl/sdks/go/opspec/interpreter/call/container/logs"
 	"github.com/opctl/opctl/sdks/go/opspec/interpreter/call/container/sockets"
 	"github.com/opctl/opctl/sdks/go/opspec/interpreter/str"
 )
@@ -130,6 +131,18 @@ func Interpret(
 	containerCall.Sockets, err = sockets.Interpret(
 		scope,
 		containerCallSpec.Sockets,
+		scratchDirPath,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// interpret the `log` block (only set when present; default file paths +
+	// node-level/hardcoded defaulting are applied later by
+	// node/containerlog.Resolve)
+	containerCall.Log, err = logs.Interpret(
+		scope,
+		containerCallSpec.Log,
 		scratchDirPath,
 	)
 

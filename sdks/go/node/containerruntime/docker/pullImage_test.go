@@ -95,7 +95,7 @@ var _ = Context("pullImage", func() {
 			/* assert */
 			// Checked if image exists
 			ctx, inspectedImageRef := _fakeDockerClient.ImageInspectWithRawArgsForCall(0)
-			Expect(ctx).To(Equal(providedCtx))
+			Expect(ctx).NotTo(BeNil())
 			Expect(inspectedImageRef).To(Equal(providedImageRef))
 			// Didn't pull
 			Expect(_fakeDockerClient.ImagePullCallCount()).To(Equal(0))
@@ -133,9 +133,9 @@ var _ = Context("pullImage", func() {
 			/* assert */
 			// Checked if image exists
 			ctx, inspectedImageRef := _fakeDockerClient.ImageInspectWithRawArgsForCall(0)
-			Expect(ctx).To(Equal(providedCtx))
+			Expect(ctx).NotTo(BeNil())
 			Expect(inspectedImageRef).To(Equal(providedImageRef))
-			// Pulled
+			// Pulled (ImagePull intentionally unwrapped: pulls are legitimately long-running)
 			actualCtx, actualImageRef, actualImagePullOptions := _fakeDockerClient.ImagePullArgsForCall(0)
 			Expect(actualCtx).To(Equal(providedCtx))
 			Expect(actualImageRef).To(Equal(providedImageRef))

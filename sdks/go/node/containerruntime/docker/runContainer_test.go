@@ -291,7 +291,7 @@ var _ = Context("RunContainer", func() {
 				actualPlatformConfig,
 				actualContainerName := fakeDockerClient.ContainerCreateArgsForCall(fakeDockerClient.ContainerCreateCallCount() - 1)
 
-			Expect(actualCtx).To(Equal(providedCtx))
+			Expect(actualCtx).NotTo(BeNil())
 			Expect(actualContainerConfig).To(Equal(expectedContainerConfig))
 			Expect(*actualHostConfig).To(Equal(*expectedHostConfig))
 			Expect(actualNetworkingConfig).To(Equal(expectedNetworkingConfig))

@@ -60,9 +60,10 @@ func pullImage(
 		),
 	}
 
-	if imagePullCreds != nil &&
+	authenticated := imagePullCreds != nil &&
 		imagePullCreds.Username != "" &&
-		imagePullCreds.Password != "" {
+		imagePullCreds.Password != ""
+	if authenticated {
 		var err error
 		imagePullOptions.RegistryAuth, err = constructRegistryAuth(
 			imagePullCreds.Username,
@@ -72,6 +73,22 @@ func pullImage(
 			return err
 		}
 	}
+
+	var pullAuthMsg string
+	if authenticated {
+		pullAuthMsg = fmt.Sprintf("Pulling %s as %s\n", imageRef, imagePullCreds.Username)
+	} else {
+		pullAuthMsg = fmt.Sprintf("Pulling %s anonymously (no stored auth matched; add via `opctl auth add`)\n", imageRef)
+	}
+	eventPublisher.Publish(model.Event{
+		Timestamp: time.Now().UTC(),
+		ContainerStdOutWrittenTo: &model.ContainerStdOutWrittenTo{
+			Data:        []byte(pullAuthMsg),
+			OpRef:       containerCall.OpPath,
+			ContainerID: containerID,
+			RootCallID:  rootCallID,
+		},
+	})
 
 	imagePullResp, err := dockerClient.ImagePull(
 		ctx,
@@ -118,8 +135,13 @@ func doesImageNeedPull(
 		return true, err
 	}
 	if tagged, ok := named.(reference.Tagged); ok && tagged.Tag() != "latest" {
-		_, _, err := dockerClient.ImageInspectWithRaw(ctx, imageRef)
-		if err == nil {
+		inspectCtx, cancel := withDockerTimeout(ctx, dockerInspectTimeout())
+		inspectErr := instrumentedDockerCall("ImageInspectWithRaw", "pull-skip check "+imageRef, func() error {
+			_, _, err := dockerClient.ImageInspectWithRaw(inspectCtx, imageRef)
+			return err
+		})
+		cancel()
+		if inspectErr == nil {
 			return false, nil
 		}
 		// this err can be ignored, since it's expected to be "image not found"

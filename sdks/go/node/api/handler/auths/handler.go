@@ -8,6 +8,8 @@ import (
 	"github.com/opctl/opctl/sdks/go/internal/urlpath"
 	"github.com/opctl/opctl/sdks/go/node"
 	"github.com/opctl/opctl/sdks/go/node/api/handler/auths/adds"
+	"github.com/opctl/opctl/sdks/go/node/api/handler/auths/lists"
+	"github.com/opctl/opctl/sdks/go/node/api/handler/auths/removes"
 )
 
 //counterfeiter:generate -o fakes/handler.go . Handler
@@ -23,12 +25,16 @@ func NewHandler(
 	node node.Node,
 ) Handler {
 	return _handler{
-		addsHandler: adds.NewHandler(node),
+		addsHandler:    adds.NewHandler(node),
+		listsHandler:   lists.NewHandler(node),
+		removesHandler: removes.NewHandler(node),
 	}
 }
 
 type _handler struct {
-	addsHandler adds.Handler
+	addsHandler    adds.Handler
+	listsHandler   lists.Handler
+	removesHandler removes.Handler
 }
 
 func (hdlr _handler) Handle(
@@ -44,6 +50,16 @@ func (hdlr _handler) Handle(
 	switch pathSegment {
 	case "adds":
 		hdlr.addsHandler.Handle(
+			httpResp,
+			httpReq,
+		)
+	case "lists":
+		hdlr.listsHandler.Handle(
+			httpResp,
+			httpReq,
+		)
+	case "removes":
+		hdlr.removesHandler.Handle(
 			httpResp,
 			httpReq,
 		)

@@ -15,9 +15,16 @@ import (
 
 // Container identifies an opctl-managed container known to a container runtime.
 type Container struct {
-	ID        string
-	Name      string
-	Image     string
+	ID    string
+	Name  string
+	Image string
+	// State is the canonical short state from the runtime, e.g. "running", "created",
+	// "exited", "paused", "dead", "restarting". Used for filtering (see opctl
+	// container ls -a / opctl container prune).
+	State string
+	// Status is the human-readable status from the runtime, e.g. "Up 5 minutes",
+	// "Exited (0) 1 hour ago". Displayed by `opctl container ls`.
+	Status    string
 	StartedAt time.Time
 	Labels    map[string]string
 }

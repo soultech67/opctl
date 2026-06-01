@@ -9,6 +9,7 @@ import (
 
 	"github.com/appdataspec/sdk-golang/appdatapath"
 	"github.com/opctl/opctl/cli/cmd/auth"
+	"github.com/opctl/opctl/cli/cmd/doctor"
 	"github.com/opctl/opctl/cli/cmd/node"
 	"github.com/opctl/opctl/cli/cmd/op"
 	"github.com/opctl/opctl/cli/internal/clicolorer"
@@ -253,6 +254,11 @@ func NewRootCmd() (*cobra.Command, error) {
 		),
 	)
 	rootCmd.AddCommand(
+		doctor.NewDoctorCmd(
+			&nodeConfig,
+		),
+	)
+	rootCmd.AddCommand(
 		newEventsCmd(
 			cliOutput,
 			&nodeConfig,
@@ -356,7 +362,8 @@ func Execute() {
 	}
 
 	ctx := context.Background()
-	if err := rootCmd.ExecuteContext(ctx); err != nil {
+	executedCmd, err := rootCmd.ExecuteContextC(ctx)
+	if err != nil {
 		cliOutput.Error(err.Error())
 
 		if re, ok := err.(clioutput.RunError); ok {
@@ -365,4 +372,13 @@ func Execute() {
 			os.Exit(1)
 		}
 	}
+
+	maybePrintUpdateHint(updateHintConfig{
+		args:           os.Args[1:],
+		cliColorer:     cliColorer,
+		command:        executedCmd,
+		currentVersion: version,
+		dataDir:        nodeConfig.DataDir,
+		selfUpdateRepo: selfUpdateRepo,
+	})
 }

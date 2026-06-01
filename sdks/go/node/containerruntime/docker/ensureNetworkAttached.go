@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"os/exec"
 	"runtime"
 	"runtime/debug"
 	"strings"
+	"sync"
 	"time"
 
 	dockerClientPkg "github.com/docker/docker/client"
@@ -42,6 +44,10 @@ var (
 	vmPrivateKey   *wgtypes.Key
 	hostPeerIp     = "10.33.33.1"
 	hostPeerCIDR   = hostPeerIp + "/32"
+	// wgUpMutex serializes wgUp. It runs from a goroutine on every container
+	// start, so without this, concurrent starts race to create utun devices and
+	// bind the WireGuard host socket on :listenPort.
+	wgUpMutex sync.Mutex
 )
 
 // ensureNetworkAttached is concurrency safe and is intended to be run every time a container starts in order to self-heal
@@ -57,18 +63,29 @@ func ensureNetworkAttached(
 	//
 	// note: This will likely be brittle because It's relying on undocumented docker for mac internals.
 	if runtime.GOOS == "darwin" {
-		networkInspect, networkInspectErr := dockerClient.NetworkInspect(
-			ctx,
-			networkName,
-			network.InspectOptions{},
-		)
+		inspectCtx, cancelInspect := withDockerTimeout(ctx, dockerInspectTimeout())
+		var networkInspect network.Inspect
+		networkInspectErr := instrumentedDockerCall("NetworkInspect", networkName, func() error {
+			var err error
+			networkInspect, err = dockerClient.NetworkInspect(
+				inspectCtx,
+				networkName,
+				network.InspectOptions{},
+			)
+			return err
+		})
+		cancelInspect()
 		if networkInspectErr != nil {
 			return fmt.Errorf("unable to inspect network: %w", networkInspectErr)
 		}
 
 		if gwm, _ := networkInspect.Options[gatewayModeIpV4]; gwm != natUnprotected {
 			// recreate network if gateway_mode_ipv4 not nat-unprotected
-			err := dockerClient.NetworkRemove(ctx, networkName)
+			removeCtx, cancelRemove := withDockerTimeout(ctx, dockerMutationTimeout())
+			err := instrumentedDockerCall("NetworkRemove", networkName, func() error {
+				return dockerClient.NetworkRemove(removeCtx, networkName)
+			})
+			cancelRemove()
 			if err != nil {
 				return err
 			}
@@ -98,6 +115,10 @@ func wgUp(
 	dockerClient dockerClientPkg.CommonAPIClient,
 	network network.Inspect,
 ) error {
+	// Serialize so concurrent container starts don't race on key generation,
+	// utun creation, or the :listenPort bind below.
+	wgUpMutex.Lock()
+	defer wgUpMutex.Unlock()
 
 	if hostPrivateKey == nil {
 		pk, err := wgtypes.GeneratePrivateKey()
@@ -198,7 +219,24 @@ func wgUp(
 				errs <- err
 				return
 			}
-			go wgDevice.IpcHandle(conn)
+			// Wrap IpcHandle in a panic recoverer. wgDevice.IpcHandle is a
+			// vendored WireGuard call that processes a UAPI socket connection
+			// — a malformed message or any unrecovered panic inside it would
+			// otherwise take down the whole daemon process. Yesterday's
+			// "daemon vanished mid-op, containers orphaned" symptom is exactly
+			// what that would look like. Log + stack so we have evidence for
+			// next time, but keep the daemon alive.
+			go func(conn net.Conn) {
+				defer func() {
+					if panicValue := recover(); panicValue != nil {
+						// route through the stdlib logger (redirected to the daemon's
+						// rotating log + stderr) rather than fmt.Printf to stdout, which
+						// may be /dev/null for a detached daemon.
+						log.Printf("[opctl docker] recovered from wireguard IpcHandle panic: %s\n%s", panicValue, string(debug.Stack()))
+					}
+				}()
+				wgDevice.IpcHandle(conn)
+			}(conn)
 		}
 	}()
 
@@ -227,16 +265,28 @@ func wgUp(
 		},
 	}
 
-	err = wgClient.ConfigureDevice(
-		interfaceName,
-		wgtypes.Config{
-			ListenPort: &listenPort,
-			PrivateKey: hostPrivateKey,
-			Peers:      []wgtypes.PeerConfig{peer},
-		},
-	)
-	if err != nil {
-		return fmt.Errorf("Failed to configure Wireguard device: %w", err)
+	// Setting ListenPort opens the WireGuard host UDP socket on :listenPort.
+	// After a quick daemon restart the previous daemon's socket may not be
+	// released yet, surfacing as "address already in use" — which otherwise
+	// leaves host<->container networking broken until the next restart. Retry a
+	// few times so the daemon self-heals once the OS reclaims the stale socket.
+	wgConfig := wgtypes.Config{
+		ListenPort: &listenPort,
+		PrivateKey: hostPrivateKey,
+		Peers:      []wgtypes.PeerConfig{peer},
+	}
+	const maxConfigAttempts = 6
+	for attempt := 1; ; attempt++ {
+		err = wgClient.ConfigureDevice(interfaceName, wgConfig)
+		if err == nil {
+			break
+		}
+		if attempt >= maxConfigAttempts || !strings.Contains(err.Error(), "address already in use") {
+			return fmt.Errorf("Failed to configure Wireguard device: %w", err)
+		}
+		dockerInstrInfof("WireGuard :%d still in use (attempt %d/%d), retrying in 1s: %v",
+			listenPort, attempt, maxConfigAttempts, err)
+		time.Sleep(time.Second)
 	}
 
 	for _, config := range network.IPAM.Config {

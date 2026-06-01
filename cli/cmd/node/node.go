@@ -4,6 +4,7 @@ import (
 	"github.com/opctl/opctl/cli/internal/clicolorer"
 	"github.com/opctl/opctl/cli/internal/nodeprovider/local"
 	"github.com/opctl/opctl/sdks/go/node/containerruntime"
+	"github.com/opctl/opctl/sdks/go/node/logging"
 	"github.com/spf13/cobra"
 )
 
@@ -22,6 +23,18 @@ func NewNodeCmd(
 
 	nodeCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
+
+		// For `node create` (the daemon process) initialize the durable logger
+		// before anything else can log — including the container runtime ping
+		// below — so early startup diagnostics land in the rotating log file.
+		// Other node subcommands are short-lived CLI processes and must NOT open
+		// the daemon's rotating log file (lumberjack isn't safe for concurrent
+		// writers across processes).
+		if cmd.Name() == "create" {
+			if err := logging.Init(nodeConfig.DataDir); err != nil {
+				return err
+			}
+		}
 
 		var err error
 		*containerRuntime, err = getContainerRuntime(

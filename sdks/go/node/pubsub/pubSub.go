@@ -2,7 +2,7 @@ package pubsub
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 	"runtime/debug"
 	"sync"
 
@@ -63,7 +63,8 @@ func (ps *pubSub) Subscribe(
 		defer func() {
 			// don't let panics from any operation kill the server.
 			if panic := recover(); panic != nil {
-				fmt.Printf("recovered from panic: %s\n%s", panic, string(debug.Stack()))
+				slog.Error("recovered from panic in pubsub subscription",
+					"panic", panic, "stack", string(debug.Stack()))
 			}
 		}()
 

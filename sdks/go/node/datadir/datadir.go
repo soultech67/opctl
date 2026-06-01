@@ -26,6 +26,10 @@ func New(
 		return nil, fmt.Errorf("error initializing opctl data dir: %w", err)
 	}
 
+	if err := unsudo.EnsureOwnership(resolvedPath); err != nil {
+		return nil, fmt.Errorf("error initializing opctl data dir: %w", err)
+	}
+
 	return _datadir{
 		resolvedPath: resolvedPath,
 	}, err

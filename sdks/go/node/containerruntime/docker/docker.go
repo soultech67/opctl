@@ -4,6 +4,7 @@ package docker
 //counterfeiter:generate -o internal/fakes/commonAPIClient.go github.com/docker/docker/client.CommonAPIClient
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -27,6 +28,20 @@ func New(
 	// degrade client version to version of server
 	dockerClient.NegotiateAPIVersion(ctx)
 
+	// Probe the daemon before constructing the runtime. NegotiateAPIVersion
+	// above succeeds even when Docker is wedged (it short-circuits to a
+	// default), so a Ping is the first call that meaningfully exercises the
+	// connection. Failing here surfaces an actionable error at `opctl run`
+	// invocation time instead of letting the user stare at a spinner while
+	// every subsequent Docker API call blocks.
+	if err := pingDocker(ctx, dockerClient); err != nil {
+		return nil, fmt.Errorf(
+			"docker daemon not responding (host=%s): %w; try `docker info` or restart Docker Desktop",
+			host,
+			err,
+		)
+	}
+
 	rc, err := newRunContainer(ctx, dockerClient)
 	if err != nil {
 		return nil, err
@@ -36,6 +51,22 @@ func New(
 		runContainer: rc,
 		dockerClient: dockerClient,
 	}, nil
+}
+
+// pingDocker calls dockerClient.Ping with a short timeout. Used at runtime
+// construction (and at the top of RunContainer) to fail fast when Docker is
+// unresponsive instead of blocking indefinitely deep inside ContainerCreate.
+func pingDocker(
+	ctx context.Context,
+	dockerClient dockerClientPkg.CommonAPIClient,
+) error {
+	pingCtx, cancel := withDockerTimeout(ctx, dockerPingTimeout())
+	defer cancel()
+
+	return instrumentedDockerCall("Ping", "daemon health check", func() error {
+		_, err := dockerClient.Ping(pingCtx)
+		return err
+	})
 }
 
 type _containerRuntime struct {
@@ -87,6 +118,8 @@ func (cr _containerRuntime) ListContainersByLabels(
 			ID:        dockerContainer.ID,
 			Name:      getListedContainerDisplayName(dockerContainer),
 			Image:     dockerContainer.Image,
+			State:     dockerContainer.State,
+			Status:    dockerContainer.Status,
 			StartedAt: startedAt,
 			Labels:    cloneStringMap(dockerContainer.Labels),
 		})
@@ -105,7 +138,14 @@ func (cr _containerRuntime) getListedContainerStartedAt(
 		return fallbackStartedAt, nil
 	}
 
-	inspectedContainer, err := cr.dockerClient.ContainerInspect(ctx, containerTarget)
+	inspectCtx, cancel := withDockerTimeout(ctx, dockerInspectTimeout())
+	defer cancel()
+	var inspectedContainer types.ContainerJSON
+	err := instrumentedDockerCall("ContainerInspect", "started-at lookup "+containerTarget, func() error {
+		var inspectErr error
+		inspectedContainer, inspectErr = cr.dockerClient.ContainerInspect(inspectCtx, containerTarget)
+		return inspectErr
+	})
 	if err != nil {
 		if dockerClientPkg.IsErrNotFound(err) {
 			return fallbackStartedAt, nil
@@ -172,13 +212,22 @@ func (cr _containerRuntime) listOpctlContainers(
 	ctx context.Context,
 	containerFilters filters.Args,
 ) ([]types.Container, error) {
-	return cr.dockerClient.ContainerList(
-		ctx,
-		container.ListOptions{
-			All:     true,
-			Filters: containerFilters,
-		},
-	)
+	listCtx, cancel := withDockerTimeout(ctx, dockerInspectTimeout())
+	defer cancel()
+
+	var containers []types.Container
+	err := instrumentedDockerCall("ContainerList", "opctl containers", func() error {
+		var listErr error
+		containers, listErr = cr.dockerClient.ContainerList(
+			listCtx,
+			container.ListOptions{
+				All:     true,
+				Filters: containerFilters,
+			},
+		)
+		return listErr
+	})
+	return containers, err
 }
 
 func getOpctlContainerFilters() filters.Args {

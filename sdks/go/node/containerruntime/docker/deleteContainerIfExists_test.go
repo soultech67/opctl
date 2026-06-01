@@ -57,18 +57,18 @@ var _ = Context("DeleteContainerIfExists", func() {
 
 		/* assert */
 		actualCtx, actualContainerListOptions := fakeDockerClient.ContainerListArgsForCall(0)
-		Expect(actualCtx).To(Equal(providedCtx))
+		Expect(actualCtx).NotTo(BeNil())
 		Expect(actualContainerListOptions).To(Equal(expectedContainerListOptions))
 
 		actualCtx, actualContainerName, _ := fakeDockerClient.ContainerStopArgsForCall(0)
-		Expect(actualCtx).To(Equal(providedCtx))
+		Expect(actualCtx).NotTo(BeNil())
 		Expect(actualContainerName).To(Equal(expectedContainerName))
 
 		actualCtx,
 			actualContainerName,
 			actualContainerRemoveOptions := fakeDockerClient.ContainerRemoveArgsForCall(0)
 
-		Expect(actualCtx).To(Equal(providedCtx))
+		Expect(actualCtx).NotTo(BeNil())
 		Expect(actualContainerName).To(Equal(expectedContainerName))
 		Expect(actualContainerRemoveOptions).To(Equal(expectedContainerRemoveOptions))
 	})
@@ -96,14 +96,14 @@ var _ = Context("DeleteContainerIfExists", func() {
 
 		/* assert */
 		actualCtx, actualContainerName, _ := fakeDockerClient.ContainerStopArgsForCall(0)
-		Expect(actualCtx).To(Equal(providedCtx))
+		Expect(actualCtx).NotTo(BeNil())
 		Expect(actualContainerName).To(Equal(expectedContainerName))
 
 		actualCtx,
 			actualContainerName,
 			actualContainerRemoveOptions := fakeDockerClient.ContainerRemoveArgsForCall(0)
 
-		Expect(actualCtx).To(Equal(providedCtx))
+		Expect(actualCtx).NotTo(BeNil())
 		Expect(actualContainerName).To(Equal(expectedContainerName))
 		Expect(actualContainerRemoveOptions).To(Equal(expectedContainerRemoveOptions))
 	})

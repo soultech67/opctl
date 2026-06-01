@@ -18,6 +18,20 @@ type Node interface {
 		req model.AddAuthReq,
 	) error
 
+	// ListAuths returns every stored auth entry (resources + creds)
+	ListAuths(
+		ctx context.Context,
+	) (
+		[]model.Auth,
+		error,
+	)
+
+	// RemoveAuth removes a previously-stored auth entry by exact resources match
+	RemoveAuth(
+		ctx context.Context,
+		req model.RemoveAuthReq,
+	) error
+
 	GetEventStream(
 		ctx context.Context,
 		req *model.GetEventStreamReq,

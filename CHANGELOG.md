@@ -4,6 +4,102 @@ All notable changes to this project will be documented in this file in
 accordance with
 [![keepachangelog 1.0.0](https://img.shields.io/badge/keepachangelog-1.0.0-brightgreen.svg)](http://keepachangelog.com/en/1.0.0/)
 
+## [0.1.78] - 2026-05-17
+
+### Added
+
+- Successful CLI commands now print a cached update hint when a newer fork release is available
+- Update-hint release checks use the same build-time GitHub owner/repo as `self-update`
+- New `opctl auth list` (alias `ls`) command shows stored default auth entries (resources + usernames; passwords are not printed)
+- New `opctl auth remove RESOURCES` (alias `rm`) command removes a previously-stored auth entry by its resources prefix
+- `opctl auth add` now prints a confirmation line showing the stored resources and username
+- Image pull output now states whether the pull is authenticated (and as which username) or anonymous, so silent fallbacks to anonymous pulls (and the rate limits they
+  incur) are visible
+- New `make clean` target removes the cross-compiled CLI binaries under `cli/` and any orphaned opctl-managed containers in Docker `Created` state
+- `make install` now backs up the currently-installed `opctl` to `opctl-<version>` (in the same prefix dir) before overwriting it, but only if no `opctl-*` backup already
+  exists — so the *original* pre-fork release is preserved as the restore target across repeated dev installs. Version is read via `opctl -v`; dev builds without ldflags
+  fall back to `opctl-snapshot-<timestamp>`
+- New `make uninstall` target restores the highest-version `opctl-*` backup (semver-sorted via `sort -V`) over the current binary, after killing the running daemon. Errors
+  out if no backup is present, with a pointer to `opctl self-update` for a fresh release
+- New `make reset-backup` target removes the `opctl-*` backup(s) in the install prefix so the next `make install` captures the *current* binary as the new restore target.
+  Lists what will be removed and prompts before deleting; `FORCE=1` skips the prompt for non-interactive use
+- New `make docker-logs` target tees two Docker observability streams to `./docker-logs/`: a filtered tail of Docker Desktop's VM `init.log` (every opctl / apiproxy POST /
+  warning / error line) and `docker events --filter label=opctl.managed=true`. Foreground process; Ctrl+C cleanly tears down the streams and reports the captured file
+  sizes. macOS Docker Desktop specific. Output dir overridable via `OPCTL_DOCKER_LOG_DIR`
+- New `make docker-daemon-logs` target signals dockerd inside the Docker Desktop VM with SIGUSR1, triggering a goroutine stack-trace dump. Retrieves the dump file
+  (`/var/run/docker/goroutine-stacks-<ts>.log`) from the VM and saves it under `./docker-logs/dockerd-goroutines-<ts>.log` on the host. Use while a hang is in progress to
+  capture which goroutine/function dockerd is stuck on. macOS Docker Desktop specific
+- New `make up` target runs the opctl daemon in the foreground with `OPCTL_DEBUG_DOCKER=1` (and forwards any `OPCTL_DOCKER_TIMEOUT_MULTIPLIER` from the shell). Kills any
+  background daemon first so the foreground one becomes the active one; the daemon's `[opctl docker]` / `[opctl kill]` instrumentation prints to the terminal in real time.
+  Pair with `make docker-logs` (in another terminal) for complete visibility while reproducing a hang
+- New `make doctor` target runs read-only diagnostics for the classic Docker-Desktop-wedged pathology: lists opctl-managed containers (any state), counts Created-state
+  orphans, times `docker info`, checks Spotlight indexing on the project's volume, reports `node_modules/` sizes (since large trees + gRPC-FUSE is the empirically-observed
+  wedge cause), reports Time Machine status and the current directory's TM exclusion state, and compares the installed `opctl` binary's mtime to the latest git commit so
+  you can tell at a glance whether you need to reinstall. Each finding prints ✓ / ⚠ / ✗ with a fix hint when relevant. macOS Docker Desktop specific
+- New `make docker-restart` target is the nuclear recovery: kills the opctl daemon, `osascript`-quits Docker Desktop, sleeps 5s for the VM to actually tear down,
+  relaunches, and polls `docker info` for up to 90s waiting for the daemon to come back. Use when `make doctor` shows `docker info` is unresponsive or when a `make
+  docker-daemon-logs` goroutine dump shows dockerd stuck in `syscall.fstatat` (gRPC-FUSE wedge). macOS Docker Desktop specific
+- New `opctl container prune` command removes all opctl-managed containers that are not currently running (created, exited, dead, restarting); mirrors `docker container
+  prune` and accepts `-f/--force` to skip the confirmation prompt
+- `opctl container ls` now includes a `STATUS` column (e.g. `Up 5 minutes`, `Exited (0) 2 hours ago`) so it's obvious which containers are actually running
+- `opctl container ls -i/--images` adds the IMAGE column to the table (hidden by default because long image refs were the main cause of wrapped rows)
+- `opctl container ls -v/--verbose` prints the `DELETE LABELS` filters as a separate section below the table, one block per container, suitable for copy-paste into `opctl
+  container delete --label`
+- Up-front Docker `Ping` health check on container-runtime construction and at the top of every `RunContainer`; if Docker is unresponsive the op fails fast (within ~5s)
+  with an actionable "try `docker info` or restart Docker Desktop" message instead of blocking inside `ContainerCreate`
+- Per-call timeouts on every Docker API call (Ping 5s, Inspect/List 10s, Create/Start/Stop/Remove/NetworkCreate/NetworkRemove 20s). `ContainerWait` and `ImagePull` remain
+  untimed by design (long-running on purpose). Scale all timeouts with `OPCTL_DOCKER_TIMEOUT_MULTIPLIER=2.5` for slow CI/underpowered machines
+- Deferred per-container cleanup is now bounded (30s default, multiplier-scaled). When cleanup exceeds its budget the daemon publishes a `ContainerStdErrWrittenTo` event
+  surfacing `warning: cleanup of container <name> timed out after <duration> — Docker may be unresponsive`, so a wedged Docker no longer silently keeps the CLI spinning
+  forever waiting for a `CallEnded` event that will never fire
+- `opctl run` now emits a one-shot warning when no events arrive from the daemon for 2 minutes, pointing the user at `docker info` and a Docker Desktop restart as the
+  recovery path. (Threshold widened from 30s to 2 min after observing it false-positive against legitimate steady-state services like LocalStack whose internal polling
+  cycle leaves ~30s gaps in event output.)
+- Kill-path instrumentation: the daemon now logs `[opctl kill]` lines at each cleanup step (KillOp received, callKiller.Kill enter/exit with duration, child-propagation
+  count, DeleteContainerIfExists timing) and `[opctl docker]` lines on every Docker call timeout/cancel, so the next time `Ctrl+C` leaves Docker in a bad state we have a
+  paper trail to debug from. Per-call success timings are also available when `OPCTL_DEBUG_DOCKER=1` is set
+- The daemon spawn now forwards `OPCTL_DEBUG_DOCKER` and `OPCTL_DOCKER_TIMEOUT_MULTIPLIER` from the calling shell so these tuning vars can be set in the environment without
+  requiring command-line flags. Note: the daemon is long-lived; `opctl node kill` is required for an env change to take effect
+- The daemon now persists each container's stdout/stderr to durable, rotating log files (in addition to the live event stream), so per-op logs are explorable after the op —
+  or the daemon — has stopped. On by default; files land at `<data-dir>/logs/containers/<name>_<opHash>/{stdout,stderr}.log` (a path stable across runs, so `tail -F`
+  follows it), rotated by size with capped/aged backups. Configure per container via the opfile `container.log` block (`enabled`, `dir`, `maxSizeMB`, `maxBackups`,
+  `maxAgeDays`, `compress`) — set `dir` to a host folder (e.g. the host side of your `workDir` bind mount) to land logs in your project — or globally via the
+  `OPCTL_CONTAINER_LOG*` env vars (see `docs/environment-variables.md`)
+- `opctl events` now accepts `--since` (a duration like `90m`/`24h`, or an RFC3339 timestamp) and `--roots` (comma-separated/repeated root call IDs) to replay just a subset
+  of the durable event history — e.g. one op's output after it (or the daemon) has stopped — instead of the full firehose
+
+### Changed
+
+- Release ops now pass the self-update repository through compile so published binaries consistently target fork releases
+- Compile and Makefile guidance now describe the repository setting as shared by self-update and update hints
+- `make build` / `make bld` now warns at the end when opctl-managed containers in `Created` state grow during the build (or already exist), with a pointer to `make clean`;
+  failed builds frequently leak these and they can block subsequent host file operations on macOS Docker Desktop
+- `opctl container ls` now shows only running containers by default, mirroring `docker ps` semantics; pass `-a/--all` to include stopped/created/other non-running
+  containers (the prior all-states behavior)
+- `opctl container ls` table no longer interleaves per-container `DELETE LABELS` sub-rows, which were breaking column alignment whenever a long image ref or label value
+  caused the terminal to wrap; the labels section is now opt-in via `-v/--verbose` and prints below the table
+
+### Fixed
+
+- Local node startup now repairs ownership of opctl data-dir entries left root-owned by prior sudo'd invocations, so subsequent non-root opctl runs can read and traverse
+  them
+- The macOS WireGuard `mac-net-connect` helper's per-connection `IpcHandle` goroutine (spawned in `ensureNetworkAttached.go`) is now wrapped in a panic recoverer that logs
+  the stack instead of taking down the whole daemon process. An unrecovered panic in this nested goroutine is the most likely cause of the "daemon vanished mid-op,
+  containers left running" symptom observed during local-dev `make up` runs
+- `ContainerCreate` no longer inherits cancellation from the parent op context. Docker's apiproxy cannot abort an in-flight create when the HTTP client disconnects, so
+  cancelling mid-create previously left dockerd running the create on its side and producing an invisible `Created`-state container with bind-mount references — exactly the
+  pathology that wedges subsequent `ContainerCreate` calls. The call now runs to completion (or to opctl's own 20s mutation timeout) so we always know definitively whether
+  a container exists. Trade-off: `Ctrl+C` during an in-flight create may take up to 20s to take effect; in exchange, no more invisible orphans
+- When opctl's own `ContainerCreate` timeout fires (e.g. dockerd genuinely wedged), opctl now reconciles by listing for any container carrying the call's
+  `opctl.container-id=<callID>` label and force-removes it if found. Handles the rare-but-real case where dockerd completes the create *after* our deadline. Reports either
+  "FOUND orphan ... killing" or "no orphan found; dockerd really did not create the container" so the trace is unambiguous
+- Successful `ContainerCreate` calls now log the container ID returned by Docker (`[opctl docker] ContainerCreate created id=<id> name=<name>`), making opctl traces
+  correlatable with `docker ps -a` output, the `make docker-logs` apiproxy stream, and any `make docker-daemon-logs` goroutine dumps. Previously the ID was discarded with
+  `_, err := ...`
+- `instrumentedDockerCall` now demotes the three expected-by-design Docker error patterns from `[opctl docker debug] <op> failed` to `[opctl docker debug] <op> noop
+  (<reason>)`: `ContainerStop`/`ContainerRemove` on a not-found container (the if-exists path), `ContainerRemove` racing an in-progress removal (kill cascade vs. cleanup
+  defer), and `NetworkCreate` against an already-existing network (race-tolerant ensure pattern). Cleans up the daemon log so real errors stand out when they happen
+
 ## [0.1.77] - 2026-05-17
 
 ### Added

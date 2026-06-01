@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"runtime/debug"
 	"time"
 
@@ -137,6 +138,23 @@ func (clr _caller) Call(
 			event.CallEnded.Outcome = model.OpOutcomeSucceeded
 		}
 
+		callDuration := time.Since(callStartTime)
+		switch event.CallEnded.Outcome {
+		case model.OpOutcomeFailed:
+			errMsg := ""
+			if err != nil {
+				errMsg = err.Error()
+			}
+			slog.Warn("call ended", "id", id, "ref", opPath,
+				"outcome", event.CallEnded.Outcome, "duration", callDuration.String(), "error", errMsg)
+		case model.OpOutcomeKilled:
+			slog.Info("call ended", "id", id, "ref", opPath,
+				"outcome", event.CallEnded.Outcome, "duration", callDuration.String())
+		default:
+			slog.Debug("call ended", "id", id, "ref", opPath,
+				"outcome", event.CallEnded.Outcome, "duration", callDuration.String())
+		}
+
 		clr.pubSub.Publish(event)
 	}()
 
@@ -182,6 +200,8 @@ func (clr _caller) Call(
 		},
 	)
 
+	slog.Debug("call started", "id", id, "ref", opPath, "rootCallID", rootCallID)
+
 	go func() {
 		defer func() {
 			if panic := recover(); panic != nil {
@@ -189,6 +209,8 @@ func (clr _caller) Call(
 				err = fmt.Errorf(
 					"recovered from panic: %s\n%s", panic, string(debug.Stack()),
 				)
+				slog.Error("recovered from panic during call",
+					"id", id, "ref", opPath, "panic", panic, "stack", string(debug.Stack()))
 			}
 		}()
 

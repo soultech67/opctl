@@ -40,6 +40,7 @@ type ContainerCallSpec struct {
 	WorkDir string                  `json:"workDir,omitempty"`
 	Name    *string                 `json:"name,omitempty"`
 	Ports   map[string]string       `json:"ports,omitempty"`
+	Log     *ContainerLogSpec       `json:"log,omitempty"`
 }
 
 // ContainerCallImageSpec is a spec for the image when calling a container
@@ -47,6 +48,20 @@ type ContainerCallImageSpec struct {
 	Platform  *OCIImagePlatformSpec `json:"platform,omitempty"`
 	PullCreds *CredsSpec            `json:"pullCreds,omitempty"`
 	Ref       string                `json:"ref"`
+}
+
+// ContainerLogSpec configures persistence + rotation of a container call's
+// stdout/stderr to durable log files. All fields are optional; omitted fields
+// fall back to the node-level OPCTL_CONTAINER_LOG* defaults and then to
+// hardcoded defaults (resolved in sdks/go/node/containerlog). Dir is an
+// expression resolved to a host directory (like a dirs value).
+type ContainerLogSpec struct {
+	Dir        interface{} `json:"dir,omitempty"`
+	Enabled    *bool       `json:"enabled,omitempty"`
+	MaxSizeMB  *int        `json:"maxSizeMB,omitempty"`
+	MaxBackups *int        `json:"maxBackups,omitempty"`
+	MaxAgeDays *int        `json:"maxAgeDays,omitempty"`
+	Compress   *bool       `json:"compress,omitempty"`
 }
 
 // LoopVarsSpec is a spec for a loops vars

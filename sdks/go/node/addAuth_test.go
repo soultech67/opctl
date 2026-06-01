@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"os"
-	"time"
 
 	"github.com/dgraph-io/badger/v4"
 
@@ -15,8 +14,7 @@ import (
 
 var _ = Context("core", func() {
 	Context("AddAuth", func() {
-		It("should call opAdder.Add w/ expected args", func() {
-
+		It("should publish an AuthAdded event with the requested creds + resources", func() {
 			/* arrange */
 			providedReq := model.AddAuthReq{
 				Creds: model.Creds{
@@ -26,64 +24,70 @@ var _ = Context("core", func() {
 				Resources: "resources",
 			}
 
-			dbDir, err := os.MkdirTemp("", "")
+			dbDir, err := os.MkdirTemp("", "addAuth-test-*")
 			if err != nil {
 				panic(err)
 			}
-
-			db, err := badger.Open(
-				badger.DefaultOptions(dbDir).WithLogger(nil),
-			)
+			db, err := badger.Open(badger.DefaultOptions(dbDir).WithLogger(nil))
 			if err != nil {
 				panic(err)
 			}
 
 			pubSub := pubsub.New(db)
-			eventChannel, err := pubSub.Subscribe(
-				context.Background(),
-				model.EventFilter{},
-			)
+			eventChannel, err := pubSub.Subscribe(context.Background(), model.EventFilter{})
 			if err != nil {
 				panic(err)
 			}
 
-			expectedEvent := model.Event{
-				AuthAdded: &model.AuthAdded{
-					Auth: model.Auth{
-						Creds:     providedReq.Creds,
-						Resources: providedReq.Resources,
-					},
-				},
-				Timestamp: time.Now().UTC(),
-			}
-
-			objectUnderTest := core{
-				pubSub: pubSub,
-			}
+			objectUnderTest := core{pubSub: pubSub}
 
 			/* act */
-			objectUnderTest.AddAuth(
-				context.Background(),
-				providedReq,
-			)
+			Expect(objectUnderTest.AddAuth(context.Background(), providedReq)).To(Succeed())
 
 			/* assert */
 			var actualEvent model.Event
 			go func() {
 				for event := range eventChannel {
 					if event.AuthAdded != nil {
-						// ignore timestamp from assertion
-						event.Timestamp = expectedEvent.Timestamp
 						actualEvent = event
 					}
 				}
 			}()
 
-			Eventually(
-				func() model.Event { return actualEvent },
-			).Should(
-				Equal(expectedEvent),
-			)
+			Eventually(func() *model.AuthAdded {
+				return actualEvent.AuthAdded
+			}).ShouldNot(BeNil())
+			Expect(actualEvent.AuthAdded.Auth).To(Equal(model.Auth{
+				Creds:     providedReq.Creds,
+				Resources: providedReq.Resources,
+			}))
+			Expect(actualEvent.Timestamp).NotTo(BeZero())
+		})
+		It("should result in the auth being retrievable via TryGetAuth once applied", func() {
+			/* arrange: skip the pubsub timing dance by applying the event to the store directly */
+			ss := newTestStateStore()
+			providedReq := model.AddAuthReq{
+				Creds: model.Creds{
+					Username: "username",
+					Password: "password",
+				},
+				Resources: "docker.io",
+			}
+
+			/* act */
+			Expect(ss.applyAuthAdded(model.AuthAdded{
+				Auth: model.Auth{
+					Creds:     providedReq.Creds,
+					Resources: providedReq.Resources,
+				},
+			})).To(Succeed())
+
+			/* assert */
+			actual := ss.TryGetAuth(providedReq.Resources)
+			Expect(actual).NotTo(BeNil())
+			Expect(actual.Username).To(Equal(providedReq.Username))
+			Expect(actual.Password).To(Equal(providedReq.Password))
+			Expect(actual.Resources).To(Equal(providedReq.Resources))
 		})
 	})
 })

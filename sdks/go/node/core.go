@@ -5,6 +5,8 @@ package node
 
 import (
 	"context"
+	"log"
+	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
@@ -70,6 +72,7 @@ func New(
 			containerRuntime,
 			pubSub,
 			stateStore,
+			dataDirPath,
 		),
 		dataDirPath,
 		pubSub,
@@ -85,17 +88,23 @@ func New(
 		)
 
 		since := time.Now().UTC()
-		eventChannel, _ := pubSub.Subscribe(
+		eventChannel, subErr := pubSub.Subscribe(
 			ctx,
 			model.EventFilter{
 				Since: &since,
 			},
 		)
+		if subErr != nil {
+			slog.Error("core: failed to subscribe to kill-request event stream", "error", subErr)
+			return
+		}
 
 		for event := range eventChannel {
 			switch {
 			case event.CallKillRequested != nil:
 				req := event.CallKillRequested.Request
+				log.Printf("[opctl kill] core: CallKillRequested → callKiller.Kill: opID=%s rootCallID=%s",
+					req.OpID, req.RootCallID)
 				callKiller.Kill(
 					ctx,
 					req.OpID,

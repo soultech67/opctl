@@ -50,6 +50,9 @@ func newContainerCmd(
 	containerCmd.AddCommand(
 		newContainerLsCmd(containerRuntime),
 	)
+	containerCmd.AddCommand(
+		newContainerPruneCmd(containerRuntime),
+	)
 
 	return &containerCmd
 }

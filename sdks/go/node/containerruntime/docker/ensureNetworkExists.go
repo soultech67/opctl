@@ -29,14 +29,19 @@ func ensureNetworkExists(
 	}
 
 	// always attempt to create to avoid races
-	_, networkCreateErr := dockerClient.NetworkCreate(
-		ctx,
-		networkName,
-		network.CreateOptions{
-			Attachable: true,
-			Options:    options,
-		},
-	)
+	createCtx, cancelCreate := withDockerTimeout(ctx, dockerMutationTimeout())
+	networkCreateErr := instrumentedDockerCall("NetworkCreate", networkName, func() error {
+		_, err := dockerClient.NetworkCreate(
+			createCtx,
+			networkName,
+			network.CreateOptions{
+				Attachable: true,
+				Options:    options,
+			},
+		)
+		return err
+	})
+	cancelCreate()
 	// return errors not related to already existing...
 	if networkCreateErr != nil && !strings.Contains(networkCreateErr.Error(), "exists") {
 		return fmt.Errorf("unable to create network: %w", networkCreateErr)
