@@ -113,6 +113,28 @@ These talk to the running node over its localhost API and require no elevation.
 > raising the level (`opctl doctor log-level warn` / `error`) instead of turning
 > logging off.
 
+### Container logging
+
+Separately from the node's own log, the node persists each **container's**
+stdout/stderr to durable, rotating log files (in addition to the live event
+stream), so per-op logs are explorable after shutdown. See
+`sdks/go/node/containerlog`. These variables set the **node-level defaults**; an
+opfile `container.log` block overrides any of them per container.
+
+| Variable                           | Controls                                                            | Values / format                   | Default |
+| ---------------------------------- | ------------------------------------------------------------------ | --------------------------------- | ------- |
+| `OPCTL_CONTAINER_LOG`              | Master on/off for container stdout/stderr file persistence.        | `1/true/yes/on`, `0/false/no/off` | on      |
+| `OPCTL_CONTAINER_LOG_MAX_SIZE_MB`  | Size (MB) a stream's log file reaches before it rotates.           | integer ≥ 1                       | `50`    |
+| `OPCTL_CONTAINER_LOG_MAX_BACKUPS`  | Rotated backups kept per stream (`0` = keep all, subject to age).  | integer ≥ 0                       | `5`     |
+| `OPCTL_CONTAINER_LOG_MAX_AGE_DAYS` | Max age (days) of a rotated backup before deletion (`0` = never).  | integer ≥ 0                       | `30`    |
+| `OPCTL_CONTAINER_LOG_COMPRESS`     | gzip rotated backups.                                              | `1/true/yes/on`, `0/false/no/off` | on      |
+
+**Log location.** Unless a container sets `log.dir`, files are written to
+`<data-dir>/logs/containers/<name>_<opHash>/{stdout,stderr}.log` — a path stable
+across runs of the same container, so `tail -F` follows it. The active files are
+chowned to the invoking user; rotated backups may remain root-owned. Per-container
+overrides (including a custom `dir`) live in the opfile `container.log` block.
+
 ### Profiling
 
 | Variable            | Controls                                                                    | Values / format                   | Default |
@@ -147,7 +169,9 @@ Only these are forwarded
 - opctl tuning/diagnostics (forwarded only if set):
   `OPCTL_DEBUG_DOCKER`, `OPCTL_DOCKER_TIMEOUT_MULTIPLIER`,
   `OPCTL_LOG`, `OPCTL_LOG_LEVEL`, `OPCTL_LOG_FORMAT`, `OPCTL_LOG_FILE`,
-  `OPCTL_DEBUG_PPROF`
+  `OPCTL_CONTAINER_LOG`, `OPCTL_CONTAINER_LOG_MAX_SIZE_MB`,
+  `OPCTL_CONTAINER_LOG_MAX_BACKUPS`, `OPCTL_CONTAINER_LOG_MAX_AGE_DAYS`,
+  `OPCTL_CONTAINER_LOG_COMPRESS`, `OPCTL_DEBUG_PPROF`
 
 Consequences:
 

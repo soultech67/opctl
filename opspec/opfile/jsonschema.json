@@ -979,6 +979,37 @@
             "workDir": {
               "description": "Working directory path (overrides any defined by image)",
               "type": "string"
+            },
+            "log": {
+              "description": "Persistence + rotation of this container's stdout/stderr to durable log files. Omit to use defaults (on). See docs/environment-variables.md for the node-level OPCTL_CONTAINER_LOG* defaults.",
+              "type": "object",
+              "properties": {
+                "dir": {
+                  "description": "Host directory to write this container's log files into, resolved like a dirs value (absolute host path, op-relative $(...), or a dir ref). Default: <data-dir>/logs/containers/<name>_<opHash>/ (stable across runs). Tip: point at the host side of your workDir bind mount to also see logs at workDir/logs inside the container.",
+                  "$ref": "#/definitions/expression"
+                },
+                "enabled": {
+                  "description": "Persist this container's stdout/stderr to rotating files. Defaults to the node setting (OPCTL_CONTAINER_LOG, on). Set false to opt this container out.",
+                  "type": "boolean"
+                },
+                "maxSizeMB": {
+                  "description": "Max size (MB) of a stdout.log/stderr.log before rotation. Default 50.",
+                  "type": "number"
+                },
+                "maxBackups": {
+                  "description": "Rotated backups to retain per stream. 0 = keep all (subject to maxAgeDays). Default 5.",
+                  "type": "number"
+                },
+                "maxAgeDays": {
+                  "description": "Max age (days) of rotated backups before deletion. 0 = never delete by age. Default 30.",
+                  "type": "number"
+                },
+                "compress": {
+                  "description": "gzip rotated backups. Default true.",
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
             }
           },
           "required": [

@@ -48,6 +48,7 @@ type ContainerCall struct {
 	WorkDir string            `json:"workDir"`
 	Name    *string           `json:"name,omitempty"`
 	Ports   map[string]string `json:"ports,omitempty"`
+	Log     *ContainerLog     `json:"log,omitempty"`
 }
 
 // ContainerCallImage is the image used when calling a container
@@ -56,6 +57,21 @@ type ContainerCallImage struct {
 	PullCreds *Creds            `json:"pullCreds,omitempty"`
 	Ref       *string           `json:"ref"`
 	Src       *Value            `json:"src,omitempty"`
+}
+
+// ContainerLog carries the interpreted log-persistence config for a container
+// call. It is set only when the opfile has a `log` block. Dir is the resolved
+// host directory for a user-specified log.dir (empty => use the default
+// location under the data dir). Rotation overrides are nil where unspecified.
+// File paths + node-level/hardcoded defaulting are resolved later by
+// sdks/go/node/containerlog.Resolve.
+type ContainerLog struct {
+	Dir        string `json:"dir,omitempty"`
+	Enabled    *bool  `json:"enabled,omitempty"`
+	MaxSizeMB  *int   `json:"maxSizeMB,omitempty"`
+	MaxBackups *int   `json:"maxBackups,omitempty"`
+	MaxAgeDays *int   `json:"maxAgeDays,omitempty"`
+	Compress   *bool  `json:"compress,omitempty"`
 }
 
 // Creds contains authentication credentials

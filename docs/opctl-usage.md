@@ -52,6 +52,14 @@ Everything is persisted under `--data-dir` (default a per-user app-data path):
   non-destructive while `opctl node delete` is destructive (it `rm -rf`'s
   this directory).
 - `ops/` — the cache of pulled ops and images.
+- `logs/` — durable log files. `logs/node.log` is the daemon's own rotating log;
+  `logs/containers/<name>_<opHash>/{stdout,stderr}.log` capture each container's
+  stdout/stderr to rotating files (**on by default**), so you can read an op's
+  output after it — or the daemon — has stopped. Configure per container with the
+  opfile `container.log` block (`enabled`, `dir`, `maxSizeMB`, `maxBackups`,
+  `maxAgeDays`, `compress`; set `dir` to a host folder, e.g. the host side of your
+  `workDir` bind mount, to land them in your project), or globally with the
+  `OPCTL_CONTAINER_LOG*` env vars (see `docs/environment-variables.md`).
 
 ### Containers and the network the node builds
 
@@ -207,8 +215,29 @@ when streaming starts and new events are delivered in real time.
 
 If no node is reachable on `--api-listen-address`, one is started automatically.
 
+Because all events are persisted (`dcg/events/`), `--since` and `--roots` let you
+pull a **subset of past activity** out of the durable store — e.g. one op's
+stdout/stderr after it (or the daemon) has stopped.
+
 **Arguments**: none.
-**Flags**: only the global flags apply.
+
+**Flags** (in addition to the global flags):
+
+| Flag      | Description                                                                                                  |
+| --------- | ----------------------------------------------------------------------------------------------------------- |
+| `--since` | Only show events at or after this point — a duration relative to now (`90m`, `24h`) or an RFC3339 timestamp. |
+| `--roots` | Only show events under these root call IDs (comma-separated or repeated); e.g. the root op id of an `opctl run`. |
+
+```bash
+# Everything (default — full history, then live):
+opctl events
+
+# Just the last 2 hours:
+opctl events --since 2h
+
+# Just one op's activity (by its root call id) — e.g. to read its output after it ended:
+opctl events --roots 1c7d3307-…
+```
 
 ---
 

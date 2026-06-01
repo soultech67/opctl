@@ -5,12 +5,17 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"path/filepath"
+	"sync"
 	"time"
 
+	"github.com/opctl/opctl/sdks/go/internal/unsudo"
 	"github.com/opctl/opctl/sdks/go/model"
+	"github.com/opctl/opctl/sdks/go/node/containerlog"
 	"github.com/opctl/opctl/sdks/go/node/containerruntime"
 	"github.com/opctl/opctl/sdks/go/node/pubsub"
 	"github.com/opctl/opctl/sdks/go/opspec"
+	lumberjack "gopkg.in/natefinch/lumberjack.v2"
 )
 
 //counterfeiter:generate -o internal/fakes/containerCaller.go . containerCaller
@@ -32,12 +37,15 @@ func newContainerCaller(
 	containerRuntime containerruntime.ContainerRuntime,
 	pubSub pubsub.PubSub,
 	stateStore stateStore,
+	dataDirPath string,
 ) containerCaller {
 
 	return _containerCaller{
 		containerRuntime: containerRuntime,
 		pubSub:           pubSub,
 		stateStore:       stateStore,
+		dataDirPath:      dataDirPath,
+		logWriters:       &sync.Map{},
 	}
 
 }
@@ -46,6 +54,12 @@ type _containerCaller struct {
 	containerRuntime containerruntime.ContainerRuntime
 	pubSub           pubsub.PubSub
 	stateStore       stateStore
+	dataDirPath      string
+	// logWriters caches per-log-file rotating writers (path -> *lumberjack.Logger)
+	// for the daemon's lifetime. lumberjack starts a background mill goroutine per
+	// writer that Close() does not reap, so a fresh writer per call would leak
+	// goroutines; caching bounds them to the number of distinct log targets.
+	logWriters *sync.Map
 }
 
 func (cc _containerCaller) Call(
@@ -143,6 +157,22 @@ func (this _containerCaller) interpretLogs(
 	containerCall *model.ContainerCall,
 	rootCallID string,
 ) error {
+	// Persist the container's stdout/stderr to durable rotating files in
+	// addition to the event stream, so logs are explorable after shutdown.
+	// Additive + best-effort: a file error never affects the event stream or the
+	// op. nil writers => persistence disabled.
+	stdOutFile, stdErrFile := this.openContainerLogFiles(containerCall)
+	// Writers are cached + reused for the daemon's lifetime and intentionally NOT
+	// closed here (lumberjack's Close doesn't reap its mill goroutine). Just make
+	// the active files user-readable — the daemon runs as root; best-effort.
+	defer func() {
+		for _, f := range []*lumberjack.Logger{stdOutFile, stdErrFile} {
+			if f != nil {
+				_ = unsudo.EnsureOwnership(f.Filename)
+			}
+		}
+	}()
+
 	stdOutLogChan := make(chan error, 1)
 	go func() {
 		// interpret stdOut
@@ -160,6 +190,9 @@ func (this _containerCaller) interpretLogs(
 						},
 					},
 				)
+				if stdOutFile != nil {
+					stdOutFile.Write(chunk)
+				}
 			})
 	}()
 
@@ -180,6 +213,9 @@ func (this _containerCaller) interpretLogs(
 						},
 					},
 				)
+				if stdErrFile != nil {
+					stdErrFile.Write(chunk)
+				}
 			})
 	}()
 
@@ -196,6 +232,57 @@ func (this _containerCaller) interpretLogs(
 	}
 
 	return nil
+}
+
+// openContainerLogFiles returns per-stream rotating writers when container log
+// persistence is enabled, else nil writers. Best-effort: any setup failure
+// disables file logging without affecting the op (the event stream is unchanged).
+func (cc _containerCaller) openContainerLogFiles(
+	containerCall *model.ContainerCall,
+) (stdOut, stdErr *lumberjack.Logger) {
+	cfg := containerlog.Resolve(
+		containerCall.Log,
+		cc.dataDirPath,
+		containerCall.OpPath,
+		containerCall.Name,
+	)
+	if !cfg.Enabled {
+		return nil, nil
+	}
+
+	// user-owned dir (daemon runs as root)
+	if err := unsudo.CreateDir(filepath.Dir(cfg.StdOutPath)); err != nil {
+		slog.Warn("container log: unable to create log dir; file logging disabled",
+			"dir", filepath.Dir(cfg.StdOutPath), "error", err.Error())
+		return nil, nil
+	}
+
+	return cc.cachedWriter(cfg, cfg.StdOutPath), cc.cachedWriter(cfg, cfg.StdErrPath)
+}
+
+// cachedWriter returns the shared rotating writer for path, creating it at most
+// once per path (kept for the daemon's lifetime — see logWriters). Concurrent
+// creators race via LoadOrStore; the loser's writer is discarded unwritten, so
+// its lazy mill goroutine never starts.
+func (cc _containerCaller) cachedWriter(cfg containerlog.Config, path string) *lumberjack.Logger {
+	newWriter := func() *lumberjack.Logger {
+		return &lumberjack.Logger{
+			Filename:   path,
+			MaxSize:    cfg.MaxSizeMB,
+			MaxBackups: cfg.MaxBackups,
+			MaxAge:     cfg.MaxAgeDays,
+			Compress:   cfg.Compress,
+		}
+	}
+	if cc.logWriters == nil {
+		// no cache (e.g. a bare test instance) — acceptable in a short-lived process.
+		return newWriter()
+	}
+	if existing, ok := cc.logWriters.Load(path); ok {
+		return existing.(*lumberjack.Logger)
+	}
+	actual, _ := cc.logWriters.LoadOrStore(path, newWriter())
+	return actual.(*lumberjack.Logger)
 }
 
 func (this _containerCaller) interpretOutputs(

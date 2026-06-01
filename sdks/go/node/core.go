@@ -72,6 +72,7 @@ func New(
 			containerRuntime,
 			pubSub,
 			stateStore,
+			dataDirPath,
 		),
 		dataDirPath,
 		pubSub,

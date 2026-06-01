@@ -43,6 +43,14 @@ var daemonEnvPassThroughVars = []string{
 	// Enables the localhost-only /debug/pprof endpoints on the API server.
 	// See sdks/go/node/api/listen.go.
 	"OPCTL_DEBUG_PPROF",
+	// Node-level defaults for per-container stdout/stderr log persistence +
+	// rotation. Overridden per-container by the opfile `container.log` block.
+	// See sdks/go/node/containerlog and docs/environment-variables.md.
+	"OPCTL_CONTAINER_LOG",              // master on/off (default on)
+	"OPCTL_CONTAINER_LOG_MAX_SIZE_MB",  // rotate-at size in MB (default 50)
+	"OPCTL_CONTAINER_LOG_MAX_BACKUPS",  // backups kept per stream (default 5)
+	"OPCTL_CONTAINER_LOG_MAX_AGE_DAYS", // backup retention in days (default 30)
+	"OPCTL_CONTAINER_LOG_COMPRESS",     // gzip rotated backups (default on)
 }
 
 func (np nodeProvider) CreateNodeIfNotExists(
