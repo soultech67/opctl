@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file in
 accordance with
 [![keepachangelog 1.0.0](https://img.shields.io/badge/keepachangelog-1.0.0-brightgreen.svg)](http://keepachangelog.com/en/1.0.0/)
 
+## [0.1.79] - 2026-06-01
+
+### Changed
+
+- CI now runs the full test suite (including the docker-in-docker CLI e2e) as a dedicated `Test` GitHub check, split out from the `Build` (compile) job so test
+  results are visible on their own instead of buried inside the build step
+
 ## [0.1.78] - 2026-05-17
 
 ### Added
