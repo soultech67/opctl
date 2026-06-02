@@ -39,7 +39,12 @@ var _ = Context("core", func() {
 				panic(err)
 			}
 
-			objectUnderTest := core{pubSub: pubSub}
+			// AddAuth now waits for the AuthAdded event to be durably applied
+			// before returning, so the core needs a real stateStore subscribed
+			// to this pubSub (the db-backed pubsub replays the event, so there's
+			// no subscribe-vs-publish race).
+			ss := newStateStore(context.Background(), db, pubSub)
+			objectUnderTest := core{pubSub: pubSub, stateStore: ss}
 
 			/* act */
 			Expect(objectUnderTest.AddAuth(context.Background(), providedReq)).To(Succeed())
