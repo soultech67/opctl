@@ -10,6 +10,9 @@ accordance with
 
 - CI now runs the full test suite (including the docker-in-docker CLI e2e) as a dedicated `Test` GitHub check, split out from the `Build` (compile) job so test
   results are visible on their own instead of buried inside the build step
+- Fixed the CLI e2e test harness so negative-auth scenarios assert correctly. It ran under `sh -e`, so capturing `opctl run`'s output in a command substitution aborted
+  the script before the assertion whenever the run (correctly) failed; the exit code is now captured with errexit disabled around the run, and the run's combined output
+  and stored auth entries are logged for diagnosis
 
 ## [0.1.78] - 2026-05-17
 

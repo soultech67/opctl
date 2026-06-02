@@ -22,11 +22,28 @@ if [[ "$opRef" == "__githubAuthTestOpRef__" ]]; then
 fi
 
 echo "op: $op"
-blah=$(opctl run --no-progress --arg-file /args.yml "$opRef")
+
+# Diagnostics: stored auth (passwords are never printed by `auth list`) so we can
+# see exactly which credentials are present when a scenario runs.
+echo "=== stored auth entries ==="
+opctl auth list 2>&1 || true
+
+# Capture the exit code explicitly. The script runs under `sh -e`, where
+# `blah=$(opctl run ...)` aborts the WHOLE script the instant opctl exits
+# non-zero -- so a negative-auth scenario that *correctly* fails could never
+# reach the assertion below. Disable errexit around the run, capture combined
+# stdout+stderr (so a pull/auth error is visible in CI), then assert on $rc.
+echo "=== opctl run $opRef ==="
+set +e
+blah=$(opctl run --no-progress --arg-file /args.yml "$opRef" 2>&1)
+rc=$?
+set -e
+echo "$blah"
+echo "=== opctl run exit code: $rc ==="
 
 case "$expect" in
   success)
-    if [ $? -eq 0 ]; then
+    if [ "$rc" -eq 0 ]; then
       echo "expected $expect and got success"
       exit 0
     else
@@ -35,7 +52,7 @@ case "$expect" in
     fi
     ;;
   failure)
-    if [ $? -eq 0 ]; then
+    if [ "$rc" -eq 0 ]; then
       echo "expected $expect but got success"
       exit 1
     else
