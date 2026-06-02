@@ -2,8 +2,9 @@
 
 # Run the opctl daemon at debug level so the node log shows how the private-op
 # pull resolved its credentials (or didn't). Set before any opctl command so the
-# first daemon spawned picks it up; OPCTL_LOG_LEVEL is in the daemon env passlist.
+# first daemon spawned picks it up; both vars are in the daemon env passlist.
 export OPCTL_LOG_LEVEL=debug
+export OPCTL_LOG_FILE=/tmp/opctl-node.log
 
 echo "starting docker daemon as background process"
 nohup dockerd \
@@ -52,10 +53,13 @@ git config --list --show-origin 2>&1 | sed -E 's/(token|pass|auth|header|=).*/\1
 # -S prints the server's RESPONSE headers (status line) to stderr; no request
 # headers / token are printed, so nothing secret leaks.
 echo "=== raw unauth reachability of the PRIVATE repo (no creds) ==="
-echo "[git info/refs, no auth]:"
-wget -S -q -O- "https://github.com/soultech67/test-suite-auth.git/info/refs?service=git-upload-pack" 2>&1 | head -15
-echo "[github api, no auth]:"
-wget -S -q -O- "https://api.github.com/repos/soultech67/test-suite-auth" 2>&1 | head -12
+apk add --no-cache curl >/dev/null 2>&1 || true
+echo "[git info/refs, NO auth] (401/403 => needs auth; 200 => reachable unauth):"
+curl -s -o /dev/null -w 'status=%{http_code}\n' "https://github.com/soultech67/test-suite-auth.git/info/refs?service=git-upload-pack" 2>&1
+echo "[git info/refs, WITH token] (sanity, expect 200):"
+curl -s -o /dev/null -w 'status=%{http_code}\n' -u ":$githubAccessToken" "https://github.com/soultech67/test-suite-auth.git/info/refs?service=git-upload-pack" 2>&1
+echo "[github api, NO auth] (404 => private/hidden; 200 => visible):"
+curl -s -o /dev/null -w 'status=%{http_code}\n' "https://api.github.com/repos/soultech67/test-suite-auth" 2>&1
 
 # DECISIVE PROBE: with a brand-new, empty data dir (no `auth add` was ever run
 # against it), can opctl pull the PRIVATE op ref directly? If this exits 0, opctl
@@ -95,9 +99,8 @@ find /root /home /tmp ~ -maxdepth 8 -type d -name 'test-suite-auth*' 2>/dev/null
 
 # Diagnostics: the daemon log (debug level) -- auth/pull/clone resolution.
 echo "=== daemon node.log (auth/pull/clone/git lines) ==="
-LOG=$(find /root /home ~ -maxdepth 6 -name 'node.log' 2>/dev/null | head -1)
-echo "node.log path: ${LOG:-<not found>}"
-grep -iE "auth|cred|github|clone|pull|ls-remote|remote|resolve|git|401|403" "$LOG" 2>/dev/null | tail -50
+echo "node.log size: $(wc -l < /tmp/opctl-node.log 2>/dev/null || echo 0) lines"
+grep -iE "auth|cred|github|clone|pull|ls-remote|remote|resolve|tag|401|403" /tmp/opctl-node.log 2>/dev/null | tail -60
 
 case "$expect" in
   success)
