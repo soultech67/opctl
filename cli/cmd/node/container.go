@@ -71,9 +71,10 @@ func newContainerDeleteCmd(
 	labelFilters := []string{}
 
 	deleteCmd := cobra.Command{
-		Args:  cobra.ExactArgs(0),
-		Use:   "delete",
-		Short: "Remove opctl containers matching label filters (any state)",
+		Args:    cobra.ExactArgs(0),
+		Use:     "delete",
+		Aliases: []string{"rm"},
+		Short:   "Remove opctl containers matching label filters (any state)",
 		Long: "Removes opctl-managed containers matching ALL provided Docker label filters, " +
 			"regardless of state (running or stopped). This is the surgical/scriptable removal: " +
 			"target by container-id, container-name, image-ref, or any Docker label. If one " +
