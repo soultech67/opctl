@@ -1,0 +1,94 @@
+name: Nightly CLI e2e (full conformance)
+
+# Informational only -- this is NOT a PR gate. It runs the ENTIRE opctl
+# conformance test-suite through the CLI e2e (every test in its own nested dind,
+# ~30min+), which is too slow/flaky to block PRs. The PR `Test` check runs only
+# the fast auth subset. This workflow posts start + result (with timing) to Slack.
+#
+# NOTE: GitHub only runs `schedule:` triggers from the DEFAULT branch, so the
+# nightly takes effect once this file is on `main`. Use "Run workflow"
+# (workflow_dispatch) to exercise it from a branch.
+#
+# Required repo secrets:
+#   SLACK_WEBHOOK_URL          - Slack incoming webhook (channel hook). If unset,
+#                                the Slack steps no-op gracefully.
+#   TEST_GITHUB_ACCESS_TOKEN   - PAT used by the auth e2e scenarios (already used
+#                                by the PR Test check).
+
+on:
+  schedule:
+    - cron: '0 7 * * *'   # 07:00 UTC nightly
+  workflow_dispatch: {}
+
+env:
+  OPCTL_BOOTSTRAP_RELEASE_REPO: soultech67/opctl
+
+jobs:
+  full-cli-e2e:
+    name: Full CLI e2e (informational)
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Install Opctl
+        run: curl -L https://github.com/${OPCTL_BOOTSTRAP_RELEASE_REPO}/releases/latest/download/opctl-linux-amd64.tgz | sudo tar -xzv -C /usr/local/bin
+
+      - name: Record start + notify Slack
+        id: start
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          echo "epoch=$(date +%s)" >> "$GITHUB_OUTPUT"
+          run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          msg=":hourglass_flowing_sand: *Nightly full CLI e2e started* — <${run_url}|run #${{ github.run_number }}> on \`${{ github.ref_name }}\` @ \`${GITHUB_SHA:0:7}\`"
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            curl -sS -X POST -H 'Content-type: application/json' \
+              --data "$(jq -nc --arg t "$msg" '{text:$t}')" "$SLACK_WEBHOOK_URL" || echo "slack start post failed (non-fatal)"
+          else
+            echo "SLACK_WEBHOOK_URL not set; skipping Slack start notification"
+          fi
+
+      # cliE2eFull=true -> the e2e iterates the WHOLE test-suite (not just auth).
+      # continue-on-error so we always post the result + timing to Slack, then
+      # reflect the true outcome in the job status below.
+      - name: Full conformance CLI e2e
+        id: e2e
+        continue-on-error: true
+        run: |
+          opctl run \
+            -a githubAccessToken='${{ secrets.TEST_GITHUB_ACCESS_TOKEN }}' \
+            -a githubAuthTestOpRef='github.com/soultech67/test-suite-auth#1.0.0' \
+            -a runCliE2e=true \
+            -a cliE2eFull=true \
+            test
+
+      - name: Notify Slack with result + timing
+        if: always()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          end=$(date +%s)
+          dur=$(( end - ${{ steps.start.outputs.epoch }} ))
+          mins=$(( dur / 60 )); secs=$(( dur % 60 ))
+          run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          if [ "${{ steps.e2e.outcome }}" = "success" ]; then
+            msg=":white_check_mark: *Nightly full CLI e2e passed* in ${mins}m${secs}s — <${run_url}|run #${{ github.run_number }}> on \`${{ github.ref_name }}\` @ \`${GITHUB_SHA:0:7}\`"
+          else
+            msg=":x: *Nightly full CLI e2e FAILED* in ${mins}m${secs}s — <${run_url}|run #${{ github.run_number }}> on \`${{ github.ref_name }}\` @ \`${GITHUB_SHA:0:7}\`"
+          fi
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            curl -sS -X POST -H 'Content-type: application/json' \
+              --data "$(jq -nc --arg t "$msg" '{text:$t}')" "$SLACK_WEBHOOK_URL" || echo "slack result post failed (non-fatal)"
+          else
+            echo "SLACK_WEBHOOK_URL not set; skipping Slack result notification"
+          fi
+
+      # Make the run honestly red in the Actions history if the e2e failed. This
+      # is informational only -- a scheduled workflow, never a PR status check.
+      - name: Reflect e2e result in job status
+        if: steps.e2e.outcome != 'success'
+        run: |
+          echo "Full conformance e2e did not pass (informational nightly; does not gate PRs)."
+          exit 1

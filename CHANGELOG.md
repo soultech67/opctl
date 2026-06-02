@@ -12,10 +12,20 @@ accordance with
   `HasPrefix`-match every ref and silently supply its credentials to unrelated pulls (e.g. a private `github.com` clone with no github auth
   configured); blank entries are now skipped, and when multiple entries match the most specific (longest) prefix wins regardless of key order
 - `opctl auth add` now rejects an empty/whitespace `RESOURCES` argument, so a match-everything blank entry can no longer be stored in the first place
+- `opctl auth add` now waits until the credential is durably stored before returning. It previously published the add as an asynchronous event and
+  returned immediately, so an `opctl auth ls` (or an auth-dependent pull) run right after could read before the write landed and see nothing
+
+### Added
+
+- New nightly informational GitHub Actions workflow (`nightly-cli-e2e.yml`) runs the full conformance CLI e2e (`cliE2eFull=true`) on a schedule and
+  posts start + result with timing to a Slack webhook (`SLACK_WEBHOOK_URL` secret; no-ops gracefully if unset). It does not gate PRs
 
 ### Changed
 
 - `opctl auth ls` is now the primary name of the list command (`opctl auth list` remains as an alias)
+- The PR `Test` check's CLI e2e now runs only the fast, reliable `test-suite/auth` subset instead of the entire conformance suite (227 tests, each in
+  its own nested dind, ~30 min and timeout-flaky). The e2e op takes a `testsDir` input; interpreter conformance stays covered by the Go unit and
+  integration suites, and the full suite runs nightly (informational)
 - The CLI e2e now builds the `linux/amd64` opctl binary it mounts from the branch's own source as a gated step before the suite runs. The binary is
   gitignored and nothing else in the test graph built it, so the e2e previously ran against a stale or missing binary instead of the code under test
 - Auth resolution now emits debug-level decision logs (which stored resources/username, if any, is used for a pull — never the password) at the node

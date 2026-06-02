@@ -13,6 +13,15 @@ inputs:
       `make test` sets this to "true" only in CI (CI=true).
     string:
       default: "false"
+  cliE2eFull:
+    description: |
+      When "true", the CLI e2e iterates the ENTIRE conformance test-suite (every
+      test in its own nested dind -- slow and resource-heavy, ~30min+). Defaults
+      to "false", which scopes the e2e to test-suite/auth: the fast, reliable
+      subset that the PR gate runs. The nightly informational workflow sets
+      this to "true". Only takes effect when runCliE2e is "true".
+    string:
+      default: "false"
   githubAuthTestOpRef:
     description: private op ref used by auth test scenarios
     string:
@@ -90,14 +99,28 @@ run:
                 workDir: /src
             # e2e is docker-in-docker; only run it in CI (set via `make test`).
             # Nested dind inside opctl's macOS WireGuard network is unreliable
-            # locally, so it's gated off by default.
+            # locally, so it's gated off by default. The PR gate runs the fast,
+            # reliable auth subset (test-suite/auth); the nightly informational
+            # workflow sets cliE2eFull=true to run the whole conformance suite.
             - if:
                 - eq: [$(runCliE2e), "true"]
-              op:
-                ref: $(../../cli/.opspec/test/e2e)
-                inputs:
-                  githubAccessToken:
-                  githubAuthTestOpRef:
+              serial:
+                - if:
+                    - eq: [$(cliE2eFull), "true"]
+                  op:
+                    ref: $(../../cli/.opspec/test/e2e)
+                    inputs:
+                      githubAccessToken:
+                      githubAuthTestOpRef:
+                      testsDir: $(../../test-suite)
+                - if:
+                    - eq: [$(cliE2eFull), "false"]
+                  op:
+                    ref: $(../../cli/.opspec/test/e2e)
+                    inputs:
+                      githubAccessToken:
+                      githubAuthTestOpRef:
+                      testsDir: $(../../test-suite/auth)
         # opspec tests
         - op:
             ref: $(../../opspec/opfile/.opspec/test)
