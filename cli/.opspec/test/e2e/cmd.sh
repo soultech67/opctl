@@ -36,6 +36,23 @@ printf 'githubAccessToken length: %s\n' "$(printf %s "$githubAccessToken" | wc -
 ls -la ~/.netrc ~/.git-credentials ~/.gitconfig /etc/gitconfig 2>&1 || true
 git config --list --show-origin 2>&1 | sed -E 's/(token|pass|auth|header|=).*/\1<redacted>/I' || echo "(no git config / git not present)"
 
+# DECISIVE PROBE: with a brand-new, empty data dir (no `auth add` was ever run
+# against it), can opctl pull the PRIVATE op ref directly? If this exits 0, opctl
+# is resolving a private repo with a guaranteed-empty auth store -- i.e. the pull
+# does not actually require the credentials the negative-auth test assumes, which
+# is why `expect: failure` scenarios "got success". Isolated via --data-dir so it
+# can't affect the scenario's own run.
+PROBE_DIR=$(mktemp -d)
+echo "=== PROBE: clean-data-dir pull of $githubAuthTestOpRef (no auth stored) ==="
+opctl --data-dir "$PROBE_DIR" auth list 2>&1 || true
+set +e
+opctl --data-dir "$PROBE_DIR" run --no-progress "$githubAuthTestOpRef" >/tmp/probe.out 2>&1
+probe_rc=$?
+set -e
+echo "PROBE exit: $probe_rc"
+echo "PROBE output (first 20 lines):"
+head -20 /tmp/probe.out
+
 # Capture the exit code explicitly. The script runs under `sh -e`, where
 # `blah=$(opctl run ...)` aborts the WHOLE script the instant opctl exits
 # non-zero -- so a negative-auth scenario that *correctly* fails could never
