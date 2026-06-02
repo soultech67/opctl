@@ -14,6 +14,16 @@ accordance with
 - `opctl auth add` now rejects an empty/whitespace `RESOURCES` argument, so a match-everything blank entry can no longer be stored in the first place
 - `opctl auth add` now waits until the credential is durably stored before returning. It previously published the add as an asynchronous event and
   returned immediately, so an `opctl auth ls` (or an auth-dependent pull) run right after could read before the write landed and see nothing
+- `make install` no longer produces a binary the kernel SIGKILLs on launch (`opctl -v` → "killed", exit 137). It overwrote the binary in place,
+  reusing the inode, so on macOS the new bytes were verified against the *previous* binary's cached code signature. It now installs via a temp file +
+  atomic rename (fresh inode), so the new signature is checked cleanly
+- The daemon now reconciles leaked `/etc/resolver/opctl_*` files: it sweeps stale ones on startup and removes its own on graceful shutdown. Previously
+  only `opctl node kill` cleaned them, so any non-graceful stop (SIGKILL, crash, terminal close) leaked them and they accumulated across restarts —
+  over time degrading host DNS for the whole opctl domain set (the "opctl DNS" flakiness)
+- The container-subnet host route is now set up idempotently (delete-before-add), so a stale route left by an unclean prior daemon is replaced instead
+  of making `route add` fail with "File exists" and continuing to blackhole the container subnet
+- Removed dead, broken darwin tun-teardown that ran `ip link delete tun<N>` — a Linux command with a macOS-wrong interface name — and silently
+  discarded its error. The kernel reclaims the WireGuard utun when the daemon process exits, so no explicit delete is needed
 
 ### Added
 

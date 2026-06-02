@@ -225,18 +225,26 @@ copy_opctl() {
   prefix=$2
   dest=$3
 
+  # Install via a temp file + atomic rename instead of overwriting $dest in
+  # place. macOS caches a binary's code signature per vnode/inode; `cp`-ing over
+  # a binary that was previously launched at this path reuses the inode, so the
+  # new bytes are verified against the OLD cached signature and the process is
+  # SIGKILLed on launch (`opctl -v` -> "killed", exit 137). A rename gives $dest
+  # a fresh inode so the new signature is checked cleanly, and the swap is atomic
+  # (no window where $dest is missing or half-written). Temp lives in the dest
+  # dir so the rename stays on one filesystem.
+  tmp="$dest.install.$$"
+
   if can_install_without_sudo "$prefix" "$dest"; then
     mkdir -p "$prefix"
-    cp "$src_bin" "$dest"
-    chmod +x "$dest"
+    cp "$src_bin" "$tmp" && chmod +x "$tmp" && mv -f "$tmp" "$dest" || { rm -f "$tmp"; return 1; }
     return
   fi
 
   ensure_sudo "$dest"
   echo "installing $dest with sudo"
   sudo mkdir -p "$prefix"
-  sudo cp "$src_bin" "$dest"
-  sudo chmod +x "$dest"
+  sudo cp "$src_bin" "$tmp" && sudo chmod +x "$tmp" && sudo mv -f "$tmp" "$dest" || { sudo rm -f "$tmp"; return 1; }
 }
 
 # extract_opctl_version invokes "<bin> -v" to read the version string baked in
