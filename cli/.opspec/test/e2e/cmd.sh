@@ -1,5 +1,10 @@
 #!/usr/bin/env sh
 
+# Run the opctl daemon at debug level so the node log shows how the private-op
+# pull resolved its credentials (or didn't). Set before any opctl command so the
+# first daemon spawned picks it up; OPCTL_LOG_LEVEL is in the daemon env passlist.
+export OPCTL_LOG_LEVEL=debug
+
 echo "starting docker daemon as background process"
 nohup dockerd \
   --host=unix:///var/run/docker.sock \
@@ -36,6 +41,22 @@ printf 'githubAccessToken length: %s\n' "$(printf %s "$githubAccessToken" | wc -
 ls -la ~/.netrc ~/.git-credentials ~/.gitconfig /etc/gitconfig 2>&1 || true
 git config --list --show-origin 2>&1 | sed -E 's/(token|pass|auth|header|=).*/\1<redacted>/I' || echo "(no git config / git not present)"
 
+# MOST DECISIVE TEST: hit the PRIVATE repo's git smart-http endpoint with NO auth
+# at all (plain wget). This is exactly the request go-git's ls-remote makes.
+#   - 401/403 here  => the repo genuinely needs auth at the network level, so
+#                      opctl/go-git is sourcing a credential from somewhere (an
+#                      opctl issue worth fixing).
+#   - 200 here      => the runner/network grants unauthenticated access to this
+#                      same-account private repo, so the test's premise is invalid
+#                      in this CI environment (not an opctl bug).
+# -S prints the server's RESPONSE headers (status line) to stderr; no request
+# headers / token are printed, so nothing secret leaks.
+echo "=== raw unauth reachability of the PRIVATE repo (no creds) ==="
+echo "[git info/refs, no auth]:"
+wget -S -q -O- "https://github.com/soultech67/test-suite-auth.git/info/refs?service=git-upload-pack" 2>&1 | head -15
+echo "[github api, no auth]:"
+wget -S -q -O- "https://api.github.com/repos/soultech67/test-suite-auth" 2>&1 | head -12
+
 # DECISIVE PROBE: with a brand-new, empty data dir (no `auth add` was ever run
 # against it), can opctl pull the PRIVATE op ref directly? If this exits 0, opctl
 # is resolving a private repo with a guaranteed-empty auth store -- i.e. the pull
@@ -71,6 +92,12 @@ echo "=== opctl run exit code: $rc ==="
 # Diagnostics: did the private op actually get cloned into the ops cache?
 echo "=== ops cache (test-suite-auth present => it was pulled) ==="
 find /root /home /tmp ~ -maxdepth 8 -type d -name 'test-suite-auth*' 2>/dev/null | head
+
+# Diagnostics: the daemon log (debug level) -- auth/pull/clone resolution.
+echo "=== daemon node.log (auth/pull/clone/git lines) ==="
+LOG=$(find /root /home ~ -maxdepth 6 -name 'node.log' 2>/dev/null | head -1)
+echo "node.log path: ${LOG:-<not found>}"
+grep -iE "auth|cred|github|clone|pull|ls-remote|remote|resolve|git|401|403" "$LOG" 2>/dev/null | tail -50
 
 case "$expect" in
   success)
