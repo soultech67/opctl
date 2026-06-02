@@ -369,6 +369,30 @@ install_opctl() {
     # "bind source path does not exist" on the next run (see
     # docs/macos-docker-filesystem.md). Keeping the data dir also preserves
     # event history and the node log across dev installs.
+    # Loud guard: stopping the node takes down EVERY running opctl-managed
+    # container and any in-progress ops. People forget this and `make install`
+    # while a dev environment is up -- the node-kill is a graceful SIGTERM,
+    # which is exactly the "daemon mysteriously stopped" signal. Warn with a
+    # concrete count and confirm interactively. FORCE=1 (or a non-interactive
+    # shell with no /dev/tty) skips the prompt for scripts/CI.
+    running_count=$(docker ps --filter "label=opctl.managed=true" -q 2>/dev/null | wc -l | tr -d ' ')
+    if [ "${running_count:-0}" -gt 0 ]; then
+      echo "" >&2
+      echo "WARNING: stopping the opctl node will take down ${running_count} running opctl-managed" >&2
+      echo "         container(s) and any ops in progress -- you will need to bring your dev" >&2
+      echo "         environment(s) back up after this install." >&2
+      if [ "${FORCE:-}" != "1" ] && [ -r /dev/tty ]; then
+        printf "Stop the node and continue installing? [y/N]: " >&2
+        read -r answer < /dev/tty || answer=""
+        case "$answer" in
+          y | Y | yes | YES) ;;
+          *)
+            echo "install aborted; node left running (set FORCE=1 to skip this prompt)" >&2
+            exit 1
+            ;;
+        esac
+      fi
+    fi
     echo "running 'sudo $existing_opctl node kill' to stop the running daemon (requires root)..."
     sudo "$existing_opctl" node kill
   else

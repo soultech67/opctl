@@ -40,6 +40,9 @@ accordance with
 
 ### Changed
 
+- `make install` now warns and prompts before stopping the running node. Installing swaps the binary, which requires stopping the daemon (a graceful
+  `opctl node kill`), and that takes down every running opctl-managed container and any in-progress ops — a frequent surprise. It now reports the
+  running-container count and asks to continue; `FORCE=1` (or a non-interactive shell) skips the prompt
 - `opctl auth ls` is now the primary name of the list command (`opctl auth list` remains as an alias)
 - The PR `Test` check's CLI e2e now runs only the fast, reliable `test-suite/auth` subset instead of the entire conformance suite (227 tests, each in
   its own nested dind, ~30 min and timeout-flaky). The e2e op takes a `testsDir` input; interpreter conformance stays covered by the Go unit and
