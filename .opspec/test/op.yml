@@ -59,6 +59,35 @@ run:
                 inputs:
                   dockerSocket:
                   HOME:
+            # Build the linux/amd64 CLI binary the e2e mounts
+            # ($(../../../opctl-linux-amd64) -> cli/opctl-linux-amd64) from THIS
+            # branch's source. The binary is gitignored and nothing else in the
+            # test graph builds it, so without this the e2e would run a stale (or
+            # missing) binary instead of the code under test. Gated to e2e runs;
+            # the embeds it needs are produced by the generate phase above.
+            - if:
+                - eq: [$(runCliE2e), "true"]
+              container:
+                cmd:
+                  - go
+                  - build
+                  - -buildvcs=false
+                  - -tags=containers_image_openpgp
+                  - -ldflags
+                  - -X=github.com/opctl/opctl/cli/cmd.version=0.0.0 -X=github.com/opctl/opctl/cli/cmd.selfUpdateRepo=soultech67/opctl
+                  - -o
+                  - cli/opctl-linux-amd64
+                  - ./cli
+                dirs:
+                  /src: $(../..)
+                  /go/pkg: $(HOME/go/pkg)
+                  /root/.cache/go-build: $(HOME/$(goBuildCachePath))
+                envVars:
+                  GOOS: linux
+                  GOARCH: amd64
+                  CGO_ENABLED: 0
+                image: { ref: 'golang:1.25' }
+                workDir: /src
             # e2e is docker-in-docker; only run it in CI (set via `make test`).
             # Nested dind inside opctl's macOS WireGuard network is unreliable
             # locally, so it's gated off by default.

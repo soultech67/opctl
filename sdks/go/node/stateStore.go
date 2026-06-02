@@ -234,7 +234,10 @@ func (ss *_stateStore) TryGetAuth(
 	ref string,
 ) *model.Auth {
 	ref = strings.ToLower(ref)
-	var auth *model.Auth
+	var (
+		auth          *model.Auth
+		matchedPrefix string
+	)
 	ss.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchValues = false
@@ -244,17 +247,40 @@ func (ss *_stateStore) TryGetAuth(
 		for it.Seek(prefixBytes); it.ValidForPrefix(prefixBytes); it.Next() {
 			item := it.Item()
 			key := string(item.Key())
-			prefix := strings.TrimPrefix(key, ss.authsByResourcesKeyPrefix)
+			resources := strings.TrimPrefix(key, ss.authsByResourcesKeyPrefix)
 
-			if strings.HasPrefix(ref, prefix) {
-				item.Value(func(value []byte) error {
-					auth = &model.Auth{}
-					return json.Unmarshal(value, auth)
-				})
+			// A blank stored resources prefix would HasPrefix-match EVERY ref,
+			// silently supplying its credentials to unrelated pulls (e.g. a
+			// private github.com clone with no github auth configured). Never
+			// let a blank entry match.
+			if resources == "" {
+				continue
+			}
+
+			// Prefer the most specific (longest) matching resources so a broad
+			// entry can't shadow a narrower one regardless of badger key order.
+			if strings.HasPrefix(ref, resources) && len(resources) > len(matchedPrefix) {
+				candidate := &model.Auth{}
+				if err := item.Value(func(value []byte) error {
+					return json.Unmarshal(value, candidate)
+				}); err != nil {
+					slog.Error("error reading stored auth", "resources", resources, "error", err)
+					continue
+				}
+				auth = candidate
+				matchedPrefix = resources
 			}
 		}
 		return nil
 	})
+
+	// Auth-decision diagnostics (no secret values): which stored entry, if any,
+	// is being used to authenticate a pull for this ref.
+	if auth == nil {
+		slog.Debug("auth resolve: no stored auth matched ref", "ref", ref)
+	} else {
+		slog.Debug("auth resolve: using stored auth", "ref", ref, "matchedResources", matchedPrefix, "username", auth.Username)
+	}
 
 	return auth
 }

@@ -97,10 +97,13 @@ echo "=== opctl run exit code: $rc ==="
 echo "=== ops cache (test-suite-auth present => it was pulled) ==="
 find /root /home /tmp ~ -maxdepth 8 -type d -name 'test-suite-auth*' 2>/dev/null | head
 
-# Diagnostics: the daemon log (debug level) -- auth/pull/clone resolution.
-echo "=== daemon node.log (auth/pull/clone/git lines) ==="
-echo "node.log size: $(wc -l < /tmp/opctl-node.log 2>/dev/null || echo 0) lines"
-grep -iE "auth|cred|github|clone|pull|ls-remote|remote|resolve|tag|401|403" /tmp/opctl-node.log 2>/dev/null | tail -60
+# Diagnostics: the daemon log (debug level) -- auth-decision lines. The daemon
+# writes node.log under its data dir (not OPCTL_LOG_FILE), so locate it.
+echo "=== daemon node.log (auth-decision lines) ==="
+for LOG in $(find / -maxdepth 8 -name 'node.log' 2>/dev/null); do
+  echo "--- $LOG ($(wc -l < "$LOG" 2>/dev/null) lines) ---"
+  grep -iE "auth resolve|resolveData|op-call auth|matchedResources|injected|test-suite-auth|github.com|clone|ls-remote" "$LOG" 2>/dev/null | tail -40
+done
 
 case "$expect" in
   success)

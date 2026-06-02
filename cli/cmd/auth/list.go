@@ -16,12 +16,12 @@ func newListCmd(
 ) *cobra.Command {
 	return &cobra.Command{
 		Args:    cobra.ExactArgs(0),
-		Use:     "list",
-		Aliases: []string{"ls"},
+		Use:     "ls",
+		Aliases: []string{"list"},
 		Short:   "List stored auth entries",
 		Long: "Lists default auth entries stored via `opctl auth add`. " +
 			"Passwords are not shown; use `opctl auth remove <RESOURCES>` to clear an entry.",
-		Example: "# List stored auth entries.\nopctl auth list\n\n" +
+		Example: "# List stored auth entries.\nopctl auth ls\n\n" +
 			"# Remove a stored entry.\nopctl auth remove docker.io",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()

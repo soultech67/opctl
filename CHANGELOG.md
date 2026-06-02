@@ -6,8 +6,20 @@ accordance with
 
 ## [0.1.79] - 2026-06-01
 
+### Fixed
+
+- Stored auth lookup (`TryGetAuth`) no longer lets a blank-resources entry act as a wildcard. A stored auth whose resources prefix was empty would
+  `HasPrefix`-match every ref and silently supply its credentials to unrelated pulls (e.g. a private `github.com` clone with no github auth
+  configured); blank entries are now skipped, and when multiple entries match the most specific (longest) prefix wins regardless of key order
+- `opctl auth add` now rejects an empty/whitespace `RESOURCES` argument, so a match-everything blank entry can no longer be stored in the first place
+
 ### Changed
 
+- `opctl auth ls` is now the primary name of the list command (`opctl auth list` remains as an alias)
+- The CLI e2e now builds the `linux/amd64` opctl binary it mounts from the branch's own source as a gated step before the suite runs. The binary is
+  gitignored and nothing else in the test graph built it, so the e2e previously ran against a stale or missing binary instead of the code under test
+- Auth resolution now emits debug-level decision logs (which stored resources/username, if any, is used for a pull — never the password) at the node
+  resolve and op-call injection points, so unexpected authenticated pulls are diagnosable via `OPCTL_LOG_LEVEL=debug`
 - CI now runs the full test suite (including the docker-in-docker CLI e2e) as a dedicated `Test` GitHub check, split out from the `Build` (compile) job so test
   results are visible on their own instead of buried inside the build step
 - Fixed the CLI e2e test harness so negative-auth scenarios assert correctly. It ran under `sh -e`, so capturing `opctl run`'s output in a command substitution aborted
