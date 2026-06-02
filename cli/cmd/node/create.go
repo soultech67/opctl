@@ -133,9 +133,11 @@ func newCreateCmd(
 			// Best-effort: remove the /etc/resolver/opctl_* files this node
 			// created so a graceful stop doesn't leave them pointing at a
 			// now-dead DNS server. ctx is already cancelled, so use a fresh one.
-			// (A SIGKILL skips this; the startup sweep above is the backstop.)
+			// This is non-fatal and self-healing -- a SIGKILL skips it and the
+			// next node's startup sweep is the backstop -- so warn rather than
+			// error, and don't let it affect the node's exit status.
 			if cleanupErr := dns.DeleteResolverCfgs(context.Background()); cleanupErr != nil {
-				slog.Error("opctl node stopping: failed to clean up DNS resolver configs", "error", cleanupErr)
+				slog.Warn("opctl node stopping: could not fully clean up DNS resolver configs (non-fatal)", "error", cleanupErr)
 			}
 
 			// Record why the daemon's server loop ended so an unexpected exit

@@ -8,6 +8,10 @@ accordance with
 
 ### Fixed
 
+- Resolver-config cleanup is now idempotent. A concurrent per-container cleanup removing an `/etc/resolver/opctl_*` file between the bulk sweep's
+  directory scan and its remove no longer fails the whole sweep with `remove …: no such file or directory`; "already gone" is treated as success and
+  remaining files are still removed. The daemon's shutdown cleanup also logs this as a non-fatal warning (it never affected the node's exit) rather
+  than a scary `ERROR`
 - Stored auth lookup (`TryGetAuth`) no longer lets a blank-resources entry act as a wildcard. A stored auth whose resources prefix was empty would
   `HasPrefix`-match every ref and silently supply its credentials to unrelated pulls (e.g. a private `github.com` clone with no github auth
   configured); blank entries are now skipped, and when multiple entries match the most specific (longest) prefix wins regardless of key order
