@@ -27,6 +27,10 @@ accordance with
 
 ### Added
 
+- New `opctl container down NAME` command cleanly stops + removes the RUNNING opctl-managed container(s) with that name (a positional name, not a
+  `--label` flag) — the everyday "take a service down". A single running match is shut down directly; several running under the same name prompt for an
+  interactive selection, or `--force` takes them all down; stopped containers are ignored. It complements `delete` (remove by label, any state) and
+  `prune` (remove stopped only), and the `opctl container` help now contrasts the three
 - New nightly informational GitHub Actions workflow (`nightly-cli-e2e.yml`) runs the full conformance CLI e2e (`cliE2eFull=true`) on a schedule and
   posts start + result with timing to a Slack webhook (`SLACK_WEBHOOK_URL` secret; no-ops gracefully if unset). It does not gate PRs
 
