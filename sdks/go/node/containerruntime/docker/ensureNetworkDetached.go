@@ -16,10 +16,10 @@ func ensureNetworkDetached(
 	}
 
 	// The WireGuard utun is owned by the daemon process and reclaimed by the
-	// kernel when it exits (which, via `opctl node kill`, has already happened
-	// by the time this runs). The previous darwin branch here ran
-	// `ip link delete tun%d` -- a Linux command with a macOS-wrong interface
-	// name -- and then DISCARDED the resulting error (a constructed-but-unused
-	// fmt.Errorf), so it never actually deleted anything. Removed.
+	// kernel when that process exits, so nothing here needs to force its
+	// deletion. The previous darwin branch ran `ip link delete tun%d` -- a Linux
+	// command with a macOS-wrong interface name -- and then DISCARDED the
+	// resulting error (a constructed-but-unused fmt.Errorf), so it never
+	// actually deleted anything. Removed.
 	return nil
 }

@@ -205,7 +205,12 @@ can_install_without_sudo() {
   if [ -e "$dest" ]; then
     [ -w "$dest" ] || return 1
     dest_owner_uid=$(owner_uid "$dest") || return 1
-    [ "$dest_owner_uid" = "$(id -u)" ]
+    [ "$dest_owner_uid" = "$(id -u)" ] || return 1
+    # copy_opctl now installs via a temp file + atomic rename, which creates and
+    # renames entries in the parent dir -- so the parent must be writable too,
+    # not just $dest (otherwise we'd pick the no-sudo path and then fail to write
+    # the temp).
+    [ -w "$(dirname "$dest")" ]
     return
   fi
 

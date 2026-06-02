@@ -75,9 +75,10 @@ func newCreateCmd(
 			// /etc/resolver/opctl_* files behind (the kernel reclaims the route +
 			// tun on process exit, but these on-disk files persist), and they
 			// accumulate across restarts until resolution for the opctl domain
-			// set degrades. We hold the pidfile lock here, so we're the sole node
-			// and own these files; we re-register them for our own containers as
-			// they start, so clearing stale ones now is safe.
+			// set degrades. We hold this data dir's pidfile lock here (opctl
+			// assumes a single node per host; the /etc/resolver dir is
+			// host-global), and we re-register resolver configs for our own
+			// containers as they start, so clearing stale ones now is safe.
 			if cleanupErr := dns.DeleteResolverCfgs(ctx); cleanupErr != nil {
 				slog.Warn("opctl node starting: failed to clear stale DNS resolver configs", "error", cleanupErr)
 			}
