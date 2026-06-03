@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file in
 accordance with
 [![keepachangelog 1.0.0](https://img.shields.io/badge/keepachangelog-1.0.0-brightgreen.svg)](http://keepachangelog.com/en/1.0.0/)
 
-## [0.1.79] - 2026-06-01
+## [0.1.79] - 2026-06-03
 
 ### Fixed
 
@@ -37,6 +37,7 @@ accordance with
   `prune` (remove stopped only), and the `opctl container` help now contrasts the three
 - `opctl container ls --filter NAME` shows only opctl-managed containers whose name contains NAME (case-insensitive). The `opctl_` prefix is implied
   (`--filter artifacts-api` matches `opctl_artifacts-api_<id>`), and `_`/`-` are interchangeable; it matches the displayed name or the raw container name
+- `opctl container rm` is now a Docker-style alias for `opctl container delete`
 - New nightly informational GitHub Actions workflow (`nightly-cli-e2e.yml`) runs the full conformance CLI e2e (`cliE2eFull=true`) on a schedule and
   posts start + result with timing to a Slack webhook (`SLACK_WEBHOOK_URL` secret; no-ops gracefully if unset). It does not gate PRs
 
