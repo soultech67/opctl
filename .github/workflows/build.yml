@@ -56,9 +56,25 @@ jobs:
       uses: actions/checkout@v4
     - name: Install Opctl
       run: curl -L https://github.com/${OPCTL_BOOTSTRAP_RELEASE_REPO}/releases/latest/download/opctl-linux-amd64.tgz | sudo tar -xzv -C /usr/local/bin
-    # Full suite, including the docker-in-docker CLI e2e (runCliE2e=true).
+    # Full suite. The CLI e2e (auth scenarios) needs TEST_GITHUB_ACCESS_TOKEN,
+    # which GitHub does NOT pass to workflows from forked PRs -- with an empty
+    # token the e2e op fails its `minLength: 1` githubAccessToken constraint. So
+    # run the e2e only for same-repo PRs; fork PRs still run everything else
+    # (unit/integration/sdk/opspec/webapp/gofmt).
     - name: Test
-      run: opctl run -a githubAccessToken='${{ secrets.TEST_GITHUB_ACCESS_TOKEN }}' -a githubAuthTestOpRef='github.com/soultech67/test-suite-auth#1.0.0' -a runCliE2e=true test
+      env:
+        IS_FORK_PR: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
+      run: |
+        run_cli_e2e=true
+        if [ "$IS_FORK_PR" = "true" ]; then
+          run_cli_e2e=false
+          echo "::notice::fork PR -- skipping the CLI e2e (TEST_GITHUB_ACCESS_TOKEN is not available to forked PRs); running the rest of the suite"
+        fi
+        opctl run \
+          -a githubAccessToken='${{ secrets.TEST_GITHUB_ACCESS_TOKEN }}' \
+          -a githubAuthTestOpRef='github.com/soultech67/test-suite-auth#1.0.0' \
+          -a runCliE2e="$run_cli_e2e" \
+          test
 
   create-release:
     name: Release

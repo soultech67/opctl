@@ -52,6 +52,8 @@ accordance with
 - The PR `Test` check's CLI e2e now runs only the fast, reliable `test-suite/auth` subset instead of the entire conformance suite (227 tests, each in
   its own nested dind, ~30 min and timeout-flaky). The e2e op takes a `testsDir` input; interpreter conformance stays covered by the Go unit and
   integration suites, and the full suite runs nightly (informational)
+- The PR `Test` check skips the CLI e2e on PRs from forks. Forked PRs don't receive `TEST_GITHUB_ACCESS_TOKEN`, so the auth e2e's required token would
+  be empty; fork PRs now run the rest of the suite (unit/integration/sdk/opspec/webapp/gofmt) while same-repo PRs still run the e2e
 - The CLI e2e now builds the `linux/amd64` opctl binary it mounts from the branch's own source as a gated step before the suite runs. The binary is
   gitignored and nothing else in the test graph built it, so the e2e previously ran against a stale or missing binary instead of the code under test
 - Auth resolution now emits debug-level decision logs (which stored resources/username, if any, is used for a pull — never the password) at the node
