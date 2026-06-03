@@ -22,11 +22,21 @@ if [[ "$opRef" == "__githubAuthTestOpRef__" ]]; then
 fi
 
 echo "op: $op"
-blah=$(opctl run --no-progress --arg-file /args.yml "$opRef")
+
+# Capture the exit code explicitly. The script runs under `sh -e`, where
+# `output=$(opctl run ...)` would abort the WHOLE script the instant opctl exits
+# non-zero -- so a negative-auth scenario that *correctly* fails could never
+# reach the assertion below. Disable errexit around the run, capture combined
+# stdout+stderr (so a failure's output is visible in CI), then assert on $rc.
+set +e
+output=$(opctl run --no-progress --arg-file /args.yml "$opRef" 2>&1)
+rc=$?
+set -e
+echo "$output"
 
 case "$expect" in
   success)
-    if [ $? -eq 0 ]; then
+    if [ "$rc" -eq 0 ]; then
       echo "expected $expect and got success"
       exit 0
     else
@@ -35,7 +45,7 @@ case "$expect" in
     fi
     ;;
   failure)
-    if [ $? -eq 0 ]; then
+    if [ "$rc" -eq 0 ]; then
       echo "expected $expect but got success"
       exit 1
     else

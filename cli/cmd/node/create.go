@@ -1,6 +1,7 @@
 package node
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -69,6 +70,19 @@ func newCreateCmd(
 				return fmt.Errorf("node already running; to kill use \"sudo opctl node kill\"")
 			}
 
+			// Reconcile DNS resolver configs leaked by a prior node that didn't
+			// shut down cleanly. A SIGKILL/crash/terminal-close leaves
+			// /etc/resolver/opctl_* files behind (the kernel reclaims the route +
+			// tun on process exit, but these on-disk files persist), and they
+			// accumulate across restarts until resolution for the opctl domain
+			// set degrades. We hold this data dir's pidfile lock here (opctl
+			// assumes a single node per host; the /etc/resolver dir is
+			// host-global), and we re-register resolver configs for our own
+			// containers as they start, so clearing stale ones now is safe.
+			if cleanupErr := dns.DeleteResolverCfgs(ctx); cleanupErr != nil {
+				slog.Warn("opctl node starting: failed to clear stale DNS resolver configs", "error", cleanupErr)
+			}
+
 			eg, ctx := errgroup.WithContext(ctx)
 
 			// catch signals to ensure shutdown properly happens
@@ -115,6 +129,16 @@ func newCreateCmd(
 
 			err = eg.Wait()
 			stop()
+
+			// Best-effort: remove the /etc/resolver/opctl_* files this node
+			// created so a graceful stop doesn't leave them pointing at a
+			// now-dead DNS server. ctx is already cancelled, so use a fresh one.
+			// This is non-fatal and self-healing -- a SIGKILL skips it and the
+			// next node's startup sweep is the backstop -- so warn rather than
+			// error, and don't let it affect the node's exit status.
+			if cleanupErr := dns.DeleteResolverCfgs(context.Background()); cleanupErr != nil {
+				slog.Warn("opctl node stopping: could not fully clean up DNS resolver configs (non-fatal)", "error", cleanupErr)
+			}
 
 			// Record why the daemon's server loop ended so an unexpected exit
 			// (the non-panic "daemon vanished" mode) leaves a post-mortem trace.

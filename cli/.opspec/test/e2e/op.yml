@@ -13,12 +13,18 @@ inputs:
       default: github.com/soultech67/test-suite-auth#1.0.0
       constraints:
         minLength: 1
+  testsDir:
+    dir:
+      description: >
+        Root directory of conformance tests to iterate. The PR gate passes
+        test-suite/auth (fast, reliable); the nightly full run passes the whole
+        test-suite (every conformance test, each in its own nested dind).
 run:
   serial:
     - op:
         ref: github.com/opspec-pkgs/dir.list-contents#1.1.0
         inputs:
-          dir: $(../../../../test-suite)
+          dir: $(testsDir)
           recursive: true
         outputs:
           contentList: $(tests)
@@ -28,9 +34,9 @@ run:
           value: $(entry)
         run:
           if:
-            - exists: $(../../../../test-suite/$(entry.path)/scenarios.json)
+            - exists: $(testsDir/$(entry.path)/scenarios.json)
           serialLoop:
-            range: $(../../../../test-suite/$(entry.path)/scenarios.json)
+            range: $(testsDir/$(entry.path)/scenarios.json)
             vars:
               value: $(scenario)
             run:
@@ -55,7 +61,7 @@ run:
                       - -ce
                       - /cmd.sh
                     dirs:
-                      /test: $(../../../../test-suite/$(entry.path))
+                      /test: $(testsDir/$(entry.path))
                     envVars:
                       # help differentiate test harness from test output by configuring system under test to not color output
                       OPCTL_NO_COLOR: true

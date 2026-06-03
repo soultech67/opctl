@@ -54,6 +54,7 @@ func newContainerLsCmd(
 		all          bool
 		includeImage bool
 		verbose      bool
+		filter       string
 	)
 
 	cmd := &cobra.Command{
@@ -64,9 +65,16 @@ func newContainerLsCmd(
 			"(mirrors `docker ps` semantics) and the table omits the IMAGE column because " +
 			"image refs tend to wrap rows. Pass `--all/-a` to include non-running containers, " +
 			"`--images/-i` to add the IMAGE column, and `--verbose/-v` to also print the " +
-			"copy-paste-friendly delete-label filters below the table.",
+			"copy-paste-friendly delete-label filters below the table.\n\n" +
+			"`--filter NAME` shows only containers whose name contains NAME (case-insensitive). " +
+			"The `opctl_` prefix is implied, so `--filter artifacts-api` matches " +
+			"opctl_artifacts-api_<id> -- no need to type the prefix; `_` and `-` are " +
+			"interchangeable. (Only opctl-managed containers are listed here; for non-opctl " +
+			"containers a service starts itself, e.g. localstack's redis, use `docker ps`.)",
 		Example: "# List running opctl containers.\n" +
 			"opctl container ls\n\n" +
+			"# Show just the artifacts-api container(s).\n" +
+			"opctl container ls --filter artifacts-api\n\n" +
 			"# Include stopped/created containers too.\n" +
 			"opctl container ls -a\n\n" +
 			"# Show the IMAGE column.\n" +
@@ -81,9 +89,15 @@ func newContainerLsCmd(
 				return err
 			}
 
+			listed := filterContainersByName(filterContainersForList(containers, all), filter)
+			if strings.TrimSpace(filter) != "" && len(listed) == 0 {
+				fmt.Fprintf(cmd.OutOrStdout(), "no opctl-managed containers match %q\n", filter)
+				return nil
+			}
+
 			return writeContainerList(
 				cmd.OutOrStdout(),
-				filterContainersForList(containers, all),
+				listed,
 				containerListOptions{
 					IncludeImage: includeImage,
 					Verbose:      verbose,
@@ -94,8 +108,36 @@ func newContainerLsCmd(
 	cmd.Flags().BoolVarP(&all, "all", "a", false, "Show all opctl containers (default shows just running)")
 	cmd.Flags().BoolVarP(&includeImage, "images", "i", false, "Include the IMAGE column in the table")
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Also print delete-label filters below the table")
+	cmd.Flags().StringVar(&filter, "filter", "", "Show only containers whose name contains this substring (opctl_ prefix implied; case-insensitive)")
 
 	return cmd
+}
+
+// filterContainersByName narrows the list to containers whose name contains the
+// (case-insensitive) filter substring. The opctl_ prefix is implied -- callers
+// pass just the op's container name (e.g. "artifacts-api"). Matching is done
+// against both the display name and the raw opctl_ container name, with `_` and
+// `-` treated as equivalent so either separator works.
+func filterContainersByName(containers []containerruntime.Container, filter string) []containerruntime.Container {
+	filter = strings.TrimSpace(filter)
+	if filter == "" {
+		return containers
+	}
+
+	needle := normalizeContainerFilterText(filter)
+	matched := []containerruntime.Container{}
+	for _, container := range containers {
+		if strings.Contains(normalizeContainerFilterText(formatContainerDisplayName(container)), needle) ||
+			strings.Contains(normalizeContainerFilterText(container.Name), needle) {
+			matched = append(matched, container)
+		}
+	}
+
+	return matched
+}
+
+func normalizeContainerFilterText(s string) string {
+	return strings.ReplaceAll(strings.ToLower(s), "_", "-")
 }
 
 // filterContainersForList narrows the list to running-only when all is false.

@@ -169,6 +169,10 @@ func (clr _caller) Call(
 				Username: auth.Username,
 				Password: auth.Password,
 			}
+			// Auth-decision diagnostics (no secret values): the daemon injected
+			// stored auth for this op-ref pull at op-call time.
+			slog.Debug("op-call auth: injected stored auth for op pull",
+				"opRef", callSpec.Op.Ref, "username", auth.Username)
 		}
 	}
 

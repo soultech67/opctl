@@ -291,6 +291,15 @@ func wgUp(
 
 	for _, config := range network.IPAM.Config {
 		if network.Scope == "local" {
+			// Best-effort delete any pre-existing route for this subnet before
+			// adding ours. A stale route left behind by a node that didn't exit
+			// cleanly (e.g. one still pointing at a now-dead utun) makes the add
+			// below fail with "File exists" AND keeps blackholing the container
+			// subnet. Deleting first makes the route setup idempotent and lets a
+			// fresh node reclaim the subnet. The error is ignored because "no
+			// such route" is the normal, expected case.
+			_ = exec.Command("route", "-q", "-n", "delete", "-inet", config.Subnet).Run()
+
 			cmd := exec.Command("route", "-q", "-n", "add", "-inet", config.Subnet, "-interface", interfaceName)
 
 			outputBytes, err := cmd.CombinedOutput()

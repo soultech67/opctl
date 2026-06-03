@@ -42,8 +42,16 @@ func newContainerCmd(
 	containerCmd := cobra.Command{
 		Use:   "container",
 		Short: "Manage opctl containers",
+		Long: "Manage opctl-managed containers. The removal subcommands differ by intent:\n\n" +
+			"  down NAME       cleanly stop + remove the RUNNING container(s) with that name -- the everyday \"take a service down\"\n" +
+			"  delete --label  remove containers matching Docker label filters, in ANY state -- surgical / scriptable\n" +
+			"  prune           remove ALL stopped containers (created/exited/dead/restarting)\n" +
+			"  ls              list opctl-managed containers",
 	}
 
+	containerCmd.AddCommand(
+		newContainerDownCmd(containerRuntime),
+	)
 	containerCmd.AddCommand(
 		newContainerDeleteCmd(containerRuntime),
 	)
@@ -63,11 +71,17 @@ func newContainerDeleteCmd(
 	labelFilters := []string{}
 
 	deleteCmd := cobra.Command{
-		Args:  cobra.ExactArgs(0),
-		Use:   "delete",
-		Short: "Delete opctl containers matching labels",
-		Long: "Deletes opctl-managed containers matching all provided Docker label filters. " +
-			"If one container matches, it is deleted. If multiple containers match, an interactive terminal must select the container or containers to delete.",
+		Args:    cobra.ExactArgs(0),
+		Use:     "delete",
+		Aliases: []string{"rm"},
+		Short:   "Remove opctl containers matching label filters (any state)",
+		Long: "Removes opctl-managed containers matching ALL provided Docker label filters, " +
+			"regardless of state (running or stopped). This is the surgical/scriptable removal: " +
+			"target by container-id, container-name, image-ref, or any Docker label. If one " +
+			"container matches it is removed; if several match, an interactive terminal selects " +
+			"which.\n\n" +
+			"To take a RUNNING service down by name, prefer `opctl container down NAME`. To clear " +
+			"STOPPED leftovers, use `opctl container prune`.",
 		Example: "# Delete the opctl-managed container with this container name label.\n" +
 			"opctl container delete --label container-name=astro-local-localstack\n\n" +
 			"# Select from opctl-managed containers for this image.\n" +

@@ -13,6 +13,15 @@ inputs:
       `make test` sets this to "true" only in CI (CI=true).
     string:
       default: "false"
+  cliE2eFull:
+    description: |
+      When "true", the CLI e2e iterates the ENTIRE conformance test-suite (every
+      test in its own nested dind -- slow and resource-heavy, ~30min+). Defaults
+      to "false", which scopes the e2e to test-suite/auth: the fast, reliable
+      subset that the PR gate runs. The nightly informational workflow sets
+      this to "true". Only takes effect when runCliE2e is "true".
+    string:
+      default: "false"
   githubAuthTestOpRef:
     description: private op ref used by auth test scenarios
     string:
@@ -31,57 +40,113 @@ inputs:
       description: Home directory of caller; used to access go modules
 
 run:
-  parallel:
-    # api tests
-    - op:
-        ref: $(../../api/.opspec/test)
-    # CLI tests
-    - serial:
-        - op:
-            ref: $(../../cli/.opspec/test/unit)
-            inputs:
-              HOME:
-        - op:
-            ref: $(../../cli/.opspec/test/integration)
-            inputs:
-              dockerSocket:
-              HOME:
-        # e2e is docker-in-docker; only run it in CI (set via `make test`).
-        # Nested dind inside opctl's macOS WireGuard network is unreliable
-        # locally, so it's gated off by default.
+  serial:
+    # Generate the build artifacts the Go suites compile against via //go:embed
+    # (webapp/build for the UI, lima guest-agent binaries for the embedded
+    # runtime). Without these, `go test ./cli/...` / `./sdks/go/...` fail to
+    # compile (FAIL ... [setup failed]) on a fresh checkout / in CI. Gated on
+    # existence so it's a no-op locally once the artifacts are present.
+    - parallel:
         - if:
-            - eq: [$(runCliE2e), "true"]
+            - notExists: $(../../webapp/build)
           op:
-            ref: $(../../cli/.opspec/test/e2e)
+            ref: $(../../webapp/.opspec/compile)
+        - op:
+            ref: $(../../sdks/go/node/containerruntime/embedded/.opspec/generateEmbeds)
+    - parallel:
+        # api tests
+        - op:
+            ref: $(../../api/.opspec/test)
+        # CLI tests
+        - serial:
+            - op:
+                ref: $(../../cli/.opspec/test/unit)
+                inputs:
+                  HOME:
+            - op:
+                ref: $(../../cli/.opspec/test/integration)
+                inputs:
+                  dockerSocket:
+                  HOME:
+            # Build the linux/amd64 CLI binary the e2e mounts
+            # ($(../../../opctl-linux-amd64) -> cli/opctl-linux-amd64) from THIS
+            # branch's source. The binary is gitignored and nothing else in the
+            # test graph builds it, so without this the e2e would run a stale (or
+            # missing) binary instead of the code under test. Gated to e2e runs;
+            # the embeds it needs are produced by the generate phase above.
+            - if:
+                - eq: [$(runCliE2e), "true"]
+              container:
+                cmd:
+                  - go
+                  - build
+                  - -buildvcs=false
+                  - -tags=containers_image_openpgp
+                  - -ldflags
+                  - -X=github.com/opctl/opctl/cli/cmd.version=0.0.0 -X=github.com/opctl/opctl/cli/cmd.selfUpdateRepo=soultech67/opctl
+                  - -o
+                  - cli/opctl-linux-amd64
+                  - ./cli
+                dirs:
+                  /src: $(../..)
+                  /go/pkg: $(HOME/go/pkg)
+                  /root/.cache/go-build: $(HOME/$(goBuildCachePath))
+                envVars:
+                  GOOS: linux
+                  GOARCH: amd64
+                  CGO_ENABLED: 0
+                image: { ref: 'golang:1.25' }
+                workDir: /src
+            # e2e is docker-in-docker; only run it in CI (set via `make test`).
+            # Nested dind inside opctl's macOS WireGuard network is unreliable
+            # locally, so it's gated off by default. The PR gate runs the fast,
+            # reliable auth subset (test-suite/auth); the nightly informational
+            # workflow sets cliE2eFull=true to run the whole conformance suite.
+            - if:
+                - eq: [$(runCliE2e), "true"]
+              serial:
+                - if:
+                    - eq: [$(cliE2eFull), "true"]
+                  op:
+                    ref: $(../../cli/.opspec/test/e2e)
+                    inputs:
+                      githubAccessToken:
+                      githubAuthTestOpRef:
+                      testsDir: $(../../test-suite)
+                - if:
+                    - eq: [$(cliE2eFull), "false"]
+                  op:
+                    ref: $(../../cli/.opspec/test/e2e)
+                    inputs:
+                      githubAccessToken:
+                      githubAuthTestOpRef:
+                      testsDir: $(../../test-suite/auth)
+        # opspec tests
+        - op:
+            ref: $(../../opspec/opfile/.opspec/test)
+        # webapp tests
+        - op:
+            ref: $(../../webapp/.opspec/test)
+        # go SDK tests
+        - op:
+            ref: $(../../sdks/go/.opspec/test)
             inputs:
-              githubAccessToken:
-              githubAuthTestOpRef:
-    # opspec tests
-    - op:
-        ref: $(../../opspec/opfile/.opspec/test)
-    # webapp tests
-    - op:
-        ref: $(../../webapp/.opspec/test)
-    # go SDK tests
-    - op:
-        ref: $(../../sdks/go/.opspec/test)
-        inputs:
-          HOME:
-    # js SDK tests
-    - op:
-        ref: $(../../sdks/js/.opspec/test)
-    # check go fmt has been run
-    - container:
-        cmd:
-          - sh
-          - -ce
-          - |
-            test -z "\$(gofmt -d -l ./cli ./sdks/go | tee /tmp/output)" || (echo "Fix formatting issues with 'opctl run format'" && cat /tmp/output && exit 1)
-        dirs:
-          /src: $(../..)
-          /go/pkg: $(HOME/go/pkg)
-          /root/.cache/go-build: $(HOME/$(goBuildCachePath))
-        envVars:
-          GOFLAGS: -tags=containers_image_openpgp
-        image: { ref: "golang:1.25" }
-        workDir: /src
+              HOME:
+        # js SDK tests
+        - op:
+            ref: $(../../sdks/js/.opspec/test)
+        # check go fmt has been run
+        - container:
+            cmd:
+              - sh
+              - -ce
+              - |
+                test -z "\$(gofmt -d -l ./cli ./sdks/go | tee /tmp/output)" || (echo "Fix formatting issues with 'opctl run format'" && cat /tmp/output && exit 1)
+            dirs:
+              /src: $(../..)
+              /go/pkg: $(HOME/go/pkg)
+              /root/.cache/go-build: $(HOME/$(goBuildCachePath))
+            envVars:
+              GOFLAGS: -tags=containers_image_openpgp
+            image: { ref: "golang:1.25" }
+            workDir: /src

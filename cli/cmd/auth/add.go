@@ -2,6 +2,7 @@ package auth
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/opctl/opctl/cli/internal/nodeprovider/local"
 	"github.com/opctl/opctl/sdks/go/model"
@@ -33,6 +34,10 @@ opctl auth add github.com -u='my-username' -p='my-password'
 		Short: "Add default auth used to pull ops and images",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+
+			if strings.TrimSpace(args[0]) == "" {
+				return fmt.Errorf("%s must be a non-empty resources prefix (e.g. docker.io, github.com)", resourcesArgName)
+			}
 
 			np, err := local.New(*nodeConfig)
 			if err != nil {

@@ -4,6 +4,66 @@ All notable changes to this project will be documented in this file in
 accordance with
 [![keepachangelog 1.0.0](https://img.shields.io/badge/keepachangelog-1.0.0-brightgreen.svg)](http://keepachangelog.com/en/1.0.0/)
 
+## [0.1.79] - 2026-06-03
+
+### Fixed
+
+- Resolver-config cleanup is now idempotent. A concurrent per-container cleanup removing an `/etc/resolver/opctl_*` file between the bulk sweep's
+  directory scan and its remove no longer fails the whole sweep with `remove …: no such file or directory`; "already gone" is treated as success and
+  remaining files are still removed. The daemon's shutdown cleanup also logs this as a non-fatal warning (it never affected the node's exit) rather
+  than a scary `ERROR`
+- Stored auth lookup (`TryGetAuth`) no longer lets a blank-resources entry act as a wildcard. A stored auth whose resources prefix was empty would
+  `HasPrefix`-match every ref and silently supply its credentials to unrelated pulls (e.g. a private `github.com` clone with no github auth
+  configured); blank entries are now skipped, and when multiple entries match the most specific (longest) prefix wins regardless of key order
+- `opctl auth add` now rejects an empty/whitespace `RESOURCES` argument, so a match-everything blank entry can no longer be stored in the first place
+- `opctl auth add` now waits until the credential is durably stored before returning. It previously published the add as an asynchronous event and
+  returned immediately, so an `opctl auth ls` (or an auth-dependent pull) run right after could read before the write landed and see nothing
+- `make install` no longer produces a binary the kernel SIGKILLs on launch (`opctl -v` → "killed", exit 137). It overwrote the binary in place,
+  reusing the inode, so on macOS the new bytes were verified against the *previous* binary's cached code signature. It now installs via a temp file +
+  atomic rename (fresh inode), so the new signature is checked cleanly
+- The daemon now reconciles leaked `/etc/resolver/opctl_*` files: it sweeps stale ones on startup and removes its own on graceful shutdown. Previously
+  only `opctl node kill` cleaned them, so any non-graceful stop (SIGKILL, crash, terminal close) leaked them and they accumulated across restarts —
+  over time degrading host DNS for the whole opctl domain set (the "opctl DNS" flakiness)
+- The container-subnet host route is now set up idempotently (delete-before-add), so a stale route left by an unclean prior daemon is replaced instead
+  of making `route add` fail with "File exists" and continuing to blackhole the container subnet
+- Removed dead, broken darwin tun-teardown that ran `ip link delete tun<N>` — a Linux command with a macOS-wrong interface name — and silently
+  discarded its error. The kernel reclaims the WireGuard utun when the daemon process exits, so no explicit delete is needed
+
+### Added
+
+- New `opctl container down NAME` command cleanly stops + removes the RUNNING opctl-managed container(s) with that name (a positional name, not a
+  `--label` flag) — the everyday "take a service down". A single running match is shut down directly; several running under the same name prompt for an
+  interactive selection, or `--force` takes them all down; stopped containers are ignored. It complements `delete` (remove by label, any state) and
+  `prune` (remove stopped only), and the `opctl container` help now contrasts the three
+- `opctl container ls --filter NAME` shows only opctl-managed containers whose name contains NAME (case-insensitive). The `opctl_` prefix is implied
+  (`--filter artifacts-api` matches `opctl_artifacts-api_<id>`), and `_`/`-` are interchangeable; it matches the displayed name or the raw container name
+- `opctl container rm` is now a Docker-style alias for `opctl container delete`
+- New nightly informational GitHub Actions workflow (`nightly-cli-e2e.yml`) runs the full conformance CLI e2e (`cliE2eFull=true`) on a schedule and
+  posts start + result with timing to a Slack webhook (`SLACK_WEBHOOK_URL` secret; no-ops gracefully if unset). It does not gate PRs
+- The `Release` job now posts new releases to Slack (`SLACK_WEBHOOK_URL`): the version, release URL (notes + binaries), the triggering author/commit,
+  and the changelog notes for that version. It only fires for a genuinely new tag and is best-effort (never fails the release)
+
+### Changed
+
+- `make install` now warns and prompts before stopping the running node. Installing swaps the binary, which requires stopping the daemon (a graceful
+  `opctl node kill`), and that takes down every running opctl-managed container and any in-progress ops — a frequent surprise. It now reports the
+  running-container count and asks to continue; `FORCE=1` (or a non-interactive shell) skips the prompt
+- `opctl auth ls` is now the primary name of the list command (`opctl auth list` remains as an alias)
+- The PR `Test` check's CLI e2e now runs only the fast, reliable `test-suite/auth` subset instead of the entire conformance suite (227 tests, each in
+  its own nested dind, ~30 min and timeout-flaky). The e2e op takes a `testsDir` input; interpreter conformance stays covered by the Go unit and
+  integration suites, and the full suite runs nightly (informational)
+- The PR `Test` check skips the CLI e2e on PRs from forks. Forked PRs don't receive `TEST_GITHUB_ACCESS_TOKEN`, so the auth e2e's required token would
+  be empty; fork PRs now run the rest of the suite (unit/integration/sdk/opspec/webapp/gofmt) while same-repo PRs still run the e2e
+- The CLI e2e now builds the `linux/amd64` opctl binary it mounts from the branch's own source as a gated step before the suite runs. The binary is
+  gitignored and nothing else in the test graph built it, so the e2e previously ran against a stale or missing binary instead of the code under test
+- Auth resolution now emits debug-level decision logs (which stored resources/username, if any, is used for a pull — never the password) at the node
+  resolve and op-call injection points, so unexpected authenticated pulls are diagnosable via `OPCTL_LOG_LEVEL=debug`
+- CI now runs the full test suite (including the docker-in-docker CLI e2e) as a dedicated `Test` GitHub check, split out from the `Build` (compile) job so test
+  results are visible on their own instead of buried inside the build step
+- Fixed the CLI e2e test harness so negative-auth scenarios assert correctly. It ran under `sh -e`, so capturing `opctl run`'s output in a command substitution aborted
+  the script before the assertion whenever the run (correctly) failed; the exit code is now captured with errexit disabled around the run, and the run's combined output
+  is logged for diagnosis
+
 ## [0.1.78] - 2026-05-17
 
 ### Added

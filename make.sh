@@ -205,7 +205,12 @@ can_install_without_sudo() {
   if [ -e "$dest" ]; then
     [ -w "$dest" ] || return 1
     dest_owner_uid=$(owner_uid "$dest") || return 1
-    [ "$dest_owner_uid" = "$(id -u)" ]
+    [ "$dest_owner_uid" = "$(id -u)" ] || return 1
+    # copy_opctl now installs via a temp file + atomic rename, which creates and
+    # renames entries in the parent dir -- so the parent must be writable too,
+    # not just $dest (otherwise we'd pick the no-sudo path and then fail to write
+    # the temp).
+    [ -w "$(dirname "$dest")" ]
     return
   fi
 
@@ -225,18 +230,26 @@ copy_opctl() {
   prefix=$2
   dest=$3
 
+  # Install via a temp file + atomic rename instead of overwriting $dest in
+  # place. macOS caches a binary's code signature per vnode/inode; `cp`-ing over
+  # a binary that was previously launched at this path reuses the inode, so the
+  # new bytes are verified against the OLD cached signature and the process is
+  # SIGKILLed on launch (`opctl -v` -> "killed", exit 137). A rename gives $dest
+  # a fresh inode so the new signature is checked cleanly, and the swap is atomic
+  # (no window where $dest is missing or half-written). Temp lives in the dest
+  # dir so the rename stays on one filesystem.
+  tmp="$dest.install.$$"
+
   if can_install_without_sudo "$prefix" "$dest"; then
     mkdir -p "$prefix"
-    cp "$src_bin" "$dest"
-    chmod +x "$dest"
+    cp "$src_bin" "$tmp" && chmod +x "$tmp" && mv -f "$tmp" "$dest" || { rm -f "$tmp"; return 1; }
     return
   fi
 
   ensure_sudo "$dest"
   echo "installing $dest with sudo"
   sudo mkdir -p "$prefix"
-  sudo cp "$src_bin" "$dest"
-  sudo chmod +x "$dest"
+  sudo cp "$src_bin" "$tmp" && sudo chmod +x "$tmp" && sudo mv -f "$tmp" "$dest" || { sudo rm -f "$tmp"; return 1; }
 }
 
 # extract_opctl_version invokes "<bin> -v" to read the version string baked in
@@ -356,6 +369,30 @@ install_opctl() {
     # "bind source path does not exist" on the next run (see
     # docs/macos-docker-filesystem.md). Keeping the data dir also preserves
     # event history and the node log across dev installs.
+    # Loud guard: stopping the node takes down EVERY running opctl-managed
+    # container and any in-progress ops. People forget this and `make install`
+    # while a dev environment is up -- the node-kill is a graceful SIGTERM,
+    # which is exactly the "daemon mysteriously stopped" signal. Warn with a
+    # concrete count and confirm interactively. FORCE=1 (or a non-interactive
+    # shell with no /dev/tty) skips the prompt for scripts/CI.
+    running_count=$(docker ps --filter "label=opctl.managed=true" -q 2>/dev/null | wc -l | tr -d ' ')
+    if [ "${running_count:-0}" -gt 0 ]; then
+      echo "" >&2
+      echo "WARNING: stopping the opctl node will take down ${running_count} running opctl-managed" >&2
+      echo "         container(s) and any ops in progress -- you will need to bring your dev" >&2
+      echo "         environment(s) back up after this install." >&2
+      if [ "${FORCE:-}" != "1" ] && [ -r /dev/tty ]; then
+        printf "Stop the node and continue installing? [y/N]: " >&2
+        read -r answer < /dev/tty || answer=""
+        case "$answer" in
+          y | Y | yes | YES) ;;
+          *)
+            echo "install aborted; node left running (set FORCE=1 to skip this prompt)" >&2
+            exit 1
+            ;;
+        esac
+      fi
+    fi
     echo "running 'sudo $existing_opctl node kill' to stop the running daemon (requires root)..."
     sudo "$existing_opctl" node kill
   else
