@@ -40,6 +40,8 @@ accordance with
 - `opctl container rm` is now a Docker-style alias for `opctl container delete`
 - New nightly informational GitHub Actions workflow (`nightly-cli-e2e.yml`) runs the full conformance CLI e2e (`cliE2eFull=true`) on a schedule and
   posts start + result with timing to a Slack webhook (`SLACK_WEBHOOK_URL` secret; no-ops gracefully if unset). It does not gate PRs
+- The `Release` job now posts new releases to Slack (`SLACK_WEBHOOK_URL`): the version, release URL (notes + binaries), the triggering author/commit,
+  and the changelog notes for that version. It only fires for a genuinely new tag and is best-effort (never fails the release)
 
 ### Changed
 
