@@ -19,6 +19,8 @@ SRC_BIN := ./cli/opctl-$(GOOS)-$(GOARCH)
 
 .PHONY: build bld install uninstall reset-backup docker-logs docker-daemon-logs up doctor docker-restart test clean release help
 
+##@ Build & install
+
 build: ## Cross-compile the CLI for all platforms via `opctl run compile`; warns if opctl-managed containers leak.
 	@before=$$(docker ps -a --filter label=opctl.managed=true --filter status=created -q 2>/dev/null | wc -l | tr -d ' '); \
 	 opctl run -a version=$(VERSION) -a selfUpdateRepo=$(SELF_UPDATE_REPO) compile; \
@@ -43,35 +45,24 @@ uninstall: ## Delete the running node and restore the highest-version opctl-* ba
 reset-backup: ## Remove opctl-* backups in the install prefix; next `make install` will create a fresh one. FORCE=1 skips the prompt.
 	@FORCE="$(FORCE)" ./make.sh reset-backup
 
-docker-logs: ## Stream filtered Docker VM init.log + docker events for opctl-managed containers to ./docker-logs/. Ctrl+C to stop. (macOS Docker Desktop)
-	@OPCTL_DOCKER_LOG_DIR="$(OPCTL_DOCKER_LOG_DIR)" ./make.sh docker-logs
-
-docker-daemon-logs: ## Signal dockerd to dump every goroutine's stack. Run this WHILE a hang is in progress. Output: ./docker-logs/dockerd-goroutines-*.log. (macOS Docker Desktop)
-	@OPCTL_DOCKER_LOG_DIR="$(OPCTL_DOCKER_LOG_DIR)" ./make.sh docker-daemon-logs
+##@ Run & debug (macOS Docker Desktop)
 
 up: ## Run opctl daemon in foreground with OPCTL_DEBUG_DOCKER=1 (kills any background daemon first). Pair with `make docker-logs` / `make docker-daemon-logs` to capture full visibility while reproducing a hang.
 	@OPCTL_DEBUG_DOCKER="$(OPCTL_DEBUG_DOCKER)" OPCTL_DOCKER_TIMEOUT_MULTIPLIER="$(OPCTL_DOCKER_TIMEOUT_MULTIPLIER)" ./make.sh up
 
-doctor: ## Read-only health check for Docker Desktop, gRPC-FUSE wedge symptoms, and orphan containers. Run BEFORE debugging a hang to spot the obvious issues. (macOS Docker Desktop)
+doctor: ## Read-only health check for Docker Desktop, gRPC-FUSE wedge symptoms, and orphan containers. Run BEFORE debugging a hang to spot the obvious issues.
 	@./make.sh doctor
 
-docker-restart: ## Nuclear recovery: kill opctl daemon, quit + relaunch Docker Desktop, wait for daemon. Use when `make doctor` shows docker info unresponsive. (macOS Docker Desktop)
+docker-logs: ## Stream filtered Docker VM init.log + docker events for opctl-managed containers to ./docker-logs/. Ctrl+C to stop.
+	@OPCTL_DOCKER_LOG_DIR="$(OPCTL_DOCKER_LOG_DIR)" ./make.sh docker-logs
+
+docker-daemon-logs: ## Signal dockerd to dump every goroutine's stack. Run this WHILE a hang is in progress. Output: ./docker-logs/dockerd-goroutines-*.log.
+	@OPCTL_DOCKER_LOG_DIR="$(OPCTL_DOCKER_LOG_DIR)" ./make.sh docker-daemon-logs
+
+docker-restart: ## Nuclear recovery: kill opctl daemon, quit + relaunch Docker Desktop, wait for daemon. Use when `make doctor` shows docker info unresponsive.
 	@./make.sh docker-restart
 
-clean: ## Remove cross-compiled CLI binaries and orphaned opctl-managed containers.
-	@removed=0; \
-	 for bin in cli/opctl-darwin-amd64 cli/opctl-darwin-arm64 cli/opctl-linux-amd64 cli/opctl-linux-arm64; do \
-	   if [ -f $$bin ]; then rm -f $$bin && removed=$$((removed + 1)); fi; \
-	 done; \
-	 echo "removed $$removed cross-compiled CLI binary file(s)"
-	@orphans=$$(docker ps -a --filter label=opctl.managed=true --filter status=created -q 2>/dev/null); \
-	 if [ -n "$$orphans" ]; then \
-	   count=$$(echo "$$orphans" | wc -l | tr -d ' '); \
-	   echo "removing $$count orphaned opctl-managed container(s)..."; \
-	   docker rm $$orphans >/dev/null; \
-	 else \
-	   echo "no orphaned opctl-managed containers"; \
-	 fi
+##@ Test & release
 
 test: ## Run the test suite. CLI e2e (dind) runs only when RUN_CLI_E2E=true (default: true in CI, false locally); that path mints a PAT via `astro auth github`.
 	@if [ "$(RUN_CLI_E2E)" = "true" ]; then \
@@ -90,15 +81,33 @@ release: ## Run the release op via `opctl run release` (PAT from astro, user fro
 	 echo "release as user=$$USER"; \
 	 opctl run -a github="{\"username\":\"$$USER\",\"accessToken\":\"$$TOKEN\"}" release
 
+##@ Maintenance
+
+clean: ## Remove cross-compiled CLI binaries and orphaned opctl-managed containers.
+	@removed=0; \
+	 for bin in cli/opctl-darwin-amd64 cli/opctl-darwin-arm64 cli/opctl-linux-amd64 cli/opctl-linux-arm64; do \
+	   if [ -f $$bin ]; then rm -f $$bin && removed=$$((removed + 1)); fi; \
+	 done; \
+	 echo "removed $$removed cross-compiled CLI binary file(s)"
+	@orphans=$$(docker ps -a --filter label=opctl.managed=true --filter status=created -q 2>/dev/null); \
+	 if [ -n "$$orphans" ]; then \
+	   count=$$(echo "$$orphans" | wc -l | tr -d ' '); \
+	   echo "removing $$count orphaned opctl-managed container(s)..."; \
+	   docker rm $$orphans >/dev/null; \
+	 else \
+	   echo "no orphaned opctl-managed containers"; \
+	 fi
+
 help: ## Show this help.
-	@awk 'BEGIN { FS = ":.*##"; printf "Usage:\n  make \033[36m<target>\033[0m  [VAR=value ...]\n\nTargets:\n" } \
-	      /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
-	@printf "\nVariables (override on the command line):\n"
-	@printf "  %-18s %s\n" "VERSION"          "Semver baked into the binary (default: $(VERSION))"
-	@printf "  %-18s %s\n" "SELF_UPDATE_REPO" "owner/repo used by self-update and update hints (default: $(SELF_UPDATE_REPO))"
-	@printf "  %-18s %s\n" "GITHUB_AUTH_TEST_OP_REF" "private auth test op ref (default: $(GITHUB_AUTH_TEST_OP_REF))"
-	@printf "  %-18s %s\n" "GOOS"             "Target OS for install (default: $(GOOS))"
-	@printf "  %-18s %s\n" "GOARCH"           "Target arch for install (default: $(GOARCH))"
-	@printf "  %-18s %s\n" "PREFIX"           "Install dir override (default: existing opctl, then ~/bin or ~/.local/bin)"
+	@awk 'BEGIN { FS = ":.*##"; printf "Usage: make \033[36m<target>\033[0m [VAR=value ...]\n" } \
+	     /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5); next } \
+	     /^[a-zA-Z_-]+:.*##/ { printf "  \033[36m%-19s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+	@printf "\n\033[1mVariables\033[0m (override on the command line):\n"
+	@printf "  \033[36m%-23s\033[0m %s\n" "VERSION"                 "Semver baked into the binary (default: $(VERSION))"
+	@printf "  \033[36m%-23s\033[0m %s\n" "SELF_UPDATE_REPO"        "owner/repo used by self-update and update hints (default: $(SELF_UPDATE_REPO))"
+	@printf "  \033[36m%-23s\033[0m %s\n" "GITHUB_AUTH_TEST_OP_REF" "private auth test op ref (default: $(GITHUB_AUTH_TEST_OP_REF))"
+	@printf "  \033[36m%-23s\033[0m %s\n" "GOOS"                    "Target OS for install (default: $(GOOS))"
+	@printf "  \033[36m%-23s\033[0m %s\n" "GOARCH"                  "Target arch for install (default: $(GOARCH))"
+	@printf "  \033[36m%-23s\033[0m %s\n" "PREFIX"                  "Install dir override (default: existing opctl, then ~/bin or ~/.local/bin)"
 	@printf "\nThe 'test' and 'release' targets mint a short-lived GitHub PAT via 'astro auth github';\n"
 	@printf "'release' also picks the username from 'gh api user', falling back to 'soultech67'.\n"

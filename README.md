@@ -1,9 +1,8 @@
-# Support Ukraine
-The opctl project deeply opposes Vladimir Putins evil, unprovoked killing and war on the brave and courageous people of Ukraine.  
+# opctl
 
-We encourage you to support Ukraine any way you can. 
+<p><img src="./opctl_icon.png" alt="opctl logo" width="96"></p> 
 
-🇺🇦 We stand with Ukraine 🇺🇦
+Docker automation and workflows via composable ops!
 
 # Badges
 [![Build](https://github.com/soultech67/opctl/workflows/Build/badge.svg?branch=main)](https://github.com/soultech67/opctl/actions?query=workflow%3ABuild+branch%3Amain)
@@ -22,6 +21,7 @@ see [website](https://opctl.io)
 # Used By
 
 These awesome companies use opctl. represent by adding yours (or one you know of) to the list!
+- [Lium AI](https://www.lium.ai)
 - [Era](https://helloera.co)
 - [Expedia](https://www.expedia.com)
 - [Nintex](https://www.nintex.com)
