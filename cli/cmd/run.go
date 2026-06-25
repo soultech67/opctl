@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -194,11 +195,24 @@ opctl node and other opctl containers by their name. Containers will be removed 
 			}
 
 			// No-progress hint: if no events arrive from the daemon for
-			// noProgressHintAfter, surface a one-shot warning so the user
-			// knows opctl is stuck waiting (typically: Docker is wedged).
-			// Tracked on the wall clock since lastEventAt; the animation
-			// frame ticker checks it every 100ms and emits at most once
-			// per op via noProgressHintShown.
+			// noProgressHintAfter, we don't yet know whether anything is
+			// actually wrong — a long-running or idle step is silent too.
+			// So instead of guessing "Docker is wedged", we probe the daemon
+			// (node.Liveness) and report what we actually found:
+			//   - daemon responds  -> calm INFO: the op is most likely just
+			//     quiet (the common, healthy false-positive case). We hedge
+			//     rather than promise "all fine" because a stalled Docker call
+			//     can leave the daemon answering liveness while the op makes no
+			//     progress, so we offer the remediation ladder conditionally.
+			//   - daemon is silent -> real WARNING: the daemon is wedged.
+			// Either way the actionable advice is the same ladder that's been
+			// observed to work: restart Docker, then `opctl node delete` to
+			// clear opctl's caches/state if that doesn't help. Deliberately NOT
+			// `docker info`: in practice it reports healthy even during these
+			// lockups, so leading with it just sends users down a dead end.
+			// Tracked on the wall clock since lastEventAt; the animation frame
+			// ticker checks it every 100ms and probes at most once per quiet
+			// period via noProgressHintShown (reset whenever an event arrives).
 			//
 			// 2 min, not 30s: long-running steady-state services (e.g.
 			// localstack's ~30s polling cycles) routinely produce 30-60s
@@ -206,8 +220,15 @@ opctl node and other opctl containers by their name. Containers will be removed 
 			// fire as a false positive. 2 min reliably catches the genuine
 			// "Docker wedged" case while staying quiet during normal idle.
 			const noProgressHintAfter = 2 * time.Minute
+			// noProgressProbeTimeout bounds the liveness probe used to classify
+			// a quiet period. The liveness endpoint is a no-op 200, so a healthy
+			// daemon answers well within this; exceeding it means it's wedged.
+			const noProgressProbeTimeout = 5 * time.Second
 			lastEventAt := time.Now()
 			noProgressHintShown := false
+			// Buffered (cap 1) so the single in-flight probe goroutine never
+			// blocks or leaks if the op ends while a probe is still running.
+			daemonResponsiveChannel := make(chan bool, 1)
 
 			var state opgraph.CallGraph
 			var loadingSpinner opgraph.DotLoadingSpinner
@@ -318,12 +339,35 @@ opctl node and other opctl containers by their name. Containers will be removed 
 				case <-animationFrame:
 					clearGraph()
 					if !noProgressHintShown && time.Since(lastEventAt) > noProgressHintAfter {
-						cliOutput.Warning(fmt.Sprintf(
-							"no events from opctl daemon in %s — Docker may be unresponsive. "+
-								"Try `docker info` in another shell; if it hangs, restart Docker Desktop.",
+						noProgressHintShown = true
+						// Probe the daemon off the render loop so the spinner
+						// keeps animating while we wait for the result.
+						go func() {
+							probeCtx, cancel := context.WithTimeout(ctx, noProgressProbeTimeout)
+							defer cancel()
+							daemonResponsiveChannel <- node.Liveness(probeCtx) == nil
+						}()
+					}
+					displayGraph()
+				case daemonResponsive := <-daemonResponsiveChannel:
+					clearGraph()
+					if daemonResponsive {
+						cliOutput.Info(fmt.Sprintf(
+							"INFO: no output for %s, but the opctl daemon is still responding — this is "+
+								"normal for a long-running or idle step, so usually no action is needed. "+
+								"If it does seem stuck, restarting Docker usually clears it (note: `docker "+
+								"info` may still report healthy); if that doesn't help, `opctl node delete` "+
+								"resets opctl's caches and state.",
 							noProgressHintAfter,
 						))
-						noProgressHintShown = true
+					} else {
+						cliOutput.Warning(fmt.Sprintf(
+							"warning: the opctl daemon hasn't responded for %s and appears wedged. "+
+								"Restarting Docker usually clears it (note: `docker info` may still report "+
+								"healthy); if that doesn't help, `opctl node delete` resets opctl's caches "+
+								"and state.",
+							noProgressHintAfter,
+						))
 					}
 					displayGraph()
 				}

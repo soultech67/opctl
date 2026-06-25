@@ -20,6 +20,9 @@ type CliOutput interface {
 	// outputs a warning message (looks like an error but on stdout)
 	Warning(s string)
 
+	// outputs an informational message that needs no action (on stdout)
+	Info(s string)
+
 	// outputs an error msg
 	Error(s string)
 
@@ -67,6 +70,15 @@ func (clio _cliOutput) Warning(s string) {
 		clio.stdWriter,
 		fmt.Sprintln(
 			clio.cliColorer.Error(s),
+		),
+	)
+}
+
+func (clio _cliOutput) Info(s string) {
+	io.WriteString(
+		clio.stdWriter,
+		fmt.Sprintln(
+			clio.cliColorer.Info(s),
 		),
 	)
 }

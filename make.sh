@@ -267,36 +267,30 @@ extract_opctl_version() {
   printf '%s' "$version"
 }
 
-# any_opctl_backup_exists reports whether the prefix directory already holds
-# any opctl-<version> file. Used to enforce the "back up only if no backup is
-# present" rule — preserves the ORIGINAL pre-fork release as the restore
-# target across repeated `make install` invocations.
-any_opctl_backup_exists() {
-  prefix=$1
-  for candidate in "$prefix"/opctl-*; do
-    if [ -f "$candidate" ]; then
-      return 0
-    fi
-  done
-  return 1
-}
-
 # backup_existing_opctl copies the currently-installed opctl to opctl-<version>
-# inside the same prefix, but only if no opctl-<version> backup already exists.
+# inside the same prefix BEFORE it gets overwritten, naming the backup after the
+# version of the binary being REPLACED. Every distinct installed version is
+# therefore preserved under its own opctl-<version> file.
+#
+# It skips only when a backup for THAT EXACT version is already present, so
+# re-installing the same version is idempotent and an existing backup is never
+# overwritten (it may be the last remaining copy of that build). This is keyed
+# to the replaced version, NOT "any backup exists" — the previous behavior
+# skipped the backup whenever any older opctl-* happened to be lying around,
+# which silently destroyed the binary being overwritten (e.g. `make install
+# VERSION=1.0.80` over an installed 1.0.79 while an old opctl-0.1.77 backup was
+# present lost 1.0.79 entirely).
+#
 # Caller-supplied $existing is the absolute path to the currently-installed
 # binary (or empty if opctl isn't on PATH); $prefix is the directory it lives
-# in (or would).
+# in (or would). Makefile-built binaries always report a version (the VERSION
+# var, default 0.0.0), so the snapshot fallback only applies to stray builds
+# with no version baked in.
 backup_existing_opctl() {
   existing=$1
   prefix=$2
 
   if [ -z "$existing" ] || [ ! -f "$existing" ]; then
-    return 0
-  fi
-
-  if any_opctl_backup_exists "$prefix"; then
-    existing_backup=$(ls "$prefix"/opctl-* 2>/dev/null | head -1)
-    echo "backup already exists ($existing_backup); leaving as-is"
     return 0
   fi
 
@@ -308,6 +302,11 @@ backup_existing_opctl() {
   fi
   backup_path=$prefix/$backup_name
 
+  if [ -e "$backup_path" ]; then
+    echo "backup already exists ($backup_path); leaving as-is"
+    return 0
+  fi
+
   echo "backing up $existing to $backup_path"
   if can_install_without_sudo "$prefix" "$backup_path"; then
     cp "$existing" "$backup_path"
@@ -318,21 +317,41 @@ backup_existing_opctl() {
 }
 
 # find_highest_opctl_backup prints the absolute path to the highest-version
-# opctl-* backup in $prefix (semver-sorted via `sort -V`). Empty stdout if
-# none exist.
+# opctl-<version> backup in $prefix. Empty stdout if none exist.
+#
+# Selection is keyed to the version embedded in the filename: only version-
+# shaped names (opctl-<digit>...) compete for "highest", chosen via `sort -V`.
+# Non-version names (the opctl-snapshot-<timestamp> fallback used for builds
+# with no version baked in) are considered ONLY when no versioned backup
+# exists. This matters because `sort -V` ranks an alphabetic suffix ABOVE any
+# numeric one -- i.e. raw `sort -V` would put "opctl-snapshot-..." after
+# "opctl-1.0.79" and pick the snapshot, restoring a stray dev build over a real
+# release.
 find_highest_opctl_backup() {
   prefix=$1
-  candidates=
+  versioned=
+  fallback=
   for candidate in "$prefix"/opctl-*; do
-    if [ -f "$candidate" ]; then
-      candidates="$candidates$candidate
-"
-    fi
+    [ -f "$candidate" ] || continue
+    suffix=${candidate##*/}     # basename: opctl-<suffix>
+    suffix=${suffix#opctl-}     # strip the opctl- prefix -> <suffix>
+    case "$suffix" in
+      [0-9]*)
+        versioned="$versioned$candidate
+" ;;
+      *)
+        fallback="$fallback$candidate
+" ;;
+    esac
   done
-  if [ -z "$candidates" ]; then
+
+  if [ -n "$versioned" ]; then
+    printf '%s' "$versioned" | sort -V | tail -1
     return 0
   fi
-  printf '%s' "$candidates" | sort -V | tail -1
+  if [ -n "$fallback" ]; then
+    printf '%s' "$fallback" | sort -V | tail -1
+  fi
 }
 
 install_opctl() {
@@ -403,10 +422,10 @@ install_opctl() {
     echo "no opctl found on PATH and neither ~/bin nor ~/.local/bin exists; creating $prefix"
   fi
 
-  # Back up the currently-installed binary (once) before overwriting it.
-  # `make uninstall` restores from this backup. Only the first install creates
-  # the backup so subsequent dev installs don't clobber the pristine release
-  # that's the restore target.
+  # Back up the currently-installed binary before overwriting it, keyed by its
+  # version (see backup_existing_opctl) so each replaced version is preserved as
+  # its own opctl-<version>. `make uninstall` restores the highest-versioned
+  # backup; `make reset-backup` clears them.
   backup_existing_opctl "$existing_opctl" "$prefix"
 
   copy_opctl "$src_bin" "$prefix" "$dest"
@@ -434,18 +453,24 @@ uninstall_opctl() {
     exit 1
   fi
 
-  echo "running 'sudo $existing_opctl node delete' (requires root)..."
-  sudo "$existing_opctl" node delete
+  # Stop the daemon with `node kill`, NOT `node delete`. The restore only needs
+  # the running daemon stopped so the next run picks up the restored binary;
+  # it does not need the node's data dir wiped. `node delete` would rm -rf it,
+  # which on macOS Docker Desktop's VirtioFS trips a stale-inode bug ("bind
+  # source path does not exist") on the next run, and needlessly discards auth,
+  # caches, and event history (same rationale as install; see install_opctl).
+  echo "running 'sudo $existing_opctl node kill' to stop the running daemon (requires root)..."
+  sudo "$existing_opctl" node kill
 
+  # Restore through copy_opctl (temp file + atomic rename), NOT an in-place cp.
+  # cp-ing over $dest reuses its inode, and macOS caches a binary's code
+  # signature per inode -- so a binary previously launched at this path gets
+  # verified against the stale signature and SIGKILLed on launch ("killed", exit
+  # 137; the version probe below would print "?"). copy_opctl gives $dest a fresh
+  # inode so the restored binary is checked cleanly. Same hazard install avoids;
+  # see copy_opctl.
   echo "restoring $backup to $dest"
-  if can_install_without_sudo "$prefix" "$dest"; then
-    cp "$backup" "$dest"
-    chmod +x "$dest"
-  else
-    ensure_sudo "$dest"
-    sudo cp "$backup" "$dest"
-    sudo chmod +x "$dest"
-  fi
+  copy_opctl "$backup" "$prefix" "$dest"
 
   restored_version=$(extract_opctl_version "$dest" 2>/dev/null || echo "?")
   echo "restored opctl @ $dest (version: $restored_version)"
