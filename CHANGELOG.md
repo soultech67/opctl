@@ -8,6 +8,12 @@ accordance with
 
 ### Fixed
 
+- `make install` now actually replaces `opctl` with the binary it just built. A shell-variable leak left `opctl -v` reporting the *old* version after a
+  successful build+install: the install helpers are POSIX `sh` functions with no scoping, and `can_install_without_sudo` assigned the global `$dest`
+  while backing up the existing binary, redirecting the install to the backup path (`opctl-<oldversion>`) and leaving `opctl` itself untouched. The
+  helpers in the install/uninstall path now declare their variables `local` so they can't clobber the caller's install target
+- `make install` no longer creates an `opctl-0.0.0` backup. A binary reporting the default dev version (`0.0.0` — `make install` with no `VERSION`) is a
+  throwaway build, not a release worth preserving, and it only cluttered the backup set `make uninstall` restores from; that case is now skipped
 - `make install` no longer silently destroys the binary it overwrites. `backup_existing_opctl` now keys the backup to the version of the binary being
   replaced (`opctl-<version>`) and skips only if *that exact version* is already backed up. Previously it skipped whenever any `opctl-*` backup existed,
   so e.g. `make install VERSION=1.0.80` over an installed `1.0.79` (with an old `opctl-0.1.77` already present) lost `1.0.79` with no recoverable backup

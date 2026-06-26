@@ -199,6 +199,12 @@ first_existing_parent() {
 }
 
 can_install_without_sudo() {
+  # Declare locals so this helper can't clobber a caller's globals. It is called
+  # directly (not via $(...)) from backup_existing_opctl and copy_opctl, both of
+  # which run while install_opctl's $dest holds the real install target; a bare
+  # `dest=$2` here would overwrite that with the backup path and the new binary
+  # would be written to opctl-<version> instead of opctl.
+  local prefix dest parent dest_owner_uid
   prefix=$1
   dest=$2
 
@@ -226,6 +232,7 @@ ensure_sudo() {
 }
 
 copy_opctl() {
+  local src_bin prefix dest tmp
   src_bin=$1
   prefix=$2
   dest=$3
@@ -287,6 +294,8 @@ extract_opctl_version() {
 # var, default 0.0.0), so the snapshot fallback only applies to stray builds
 # with no version baked in.
 backup_existing_opctl() {
+  local existing prefix version backup_name backup_path
+
   existing=$1
   prefix=$2
 
@@ -295,6 +304,14 @@ backup_existing_opctl() {
   fi
 
   if version=$(extract_opctl_version "$existing"); then
+    # Never back up the default-version dev build. `make install` with no
+    # VERSION bakes in 0.0.0, so an opctl-0.0.0 "backup" is a throwaway dev
+    # binary, not a release worth keeping -- and it only clutters the backup
+    # set that `make uninstall` restores from.
+    if [ "$version" = "0.0.0" ]; then
+      echo "current opctl reports version 0.0.0 (unversioned dev build); skipping backup"
+      return 0
+    fi
     backup_name=opctl-$version
   else
     backup_name=opctl-snapshot-$(date +%Y%m%d-%H%M%S)
