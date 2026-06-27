@@ -226,9 +226,16 @@ opctl node and other opctl containers by their name. Containers will be removed 
 			const noProgressProbeTimeout = 5 * time.Second
 			lastEventAt := time.Now()
 			noProgressHintShown := false
+			// daemonProbeResult pairs the liveness verdict with the lastEventAt
+			// the probe was launched for, so a result that lands after events
+			// have resumed can be recognized as stale and dropped.
+			type daemonProbeResult struct {
+				responsive bool
+				quietSince time.Time
+			}
 			// Buffered (cap 1) so the single in-flight probe goroutine never
 			// blocks or leaks if the op ends while a probe is still running.
-			daemonResponsiveChannel := make(chan bool, 1)
+			daemonResponsiveChannel := make(chan daemonProbeResult, 1)
 
 			var state opgraph.CallGraph
 			var loadingSpinner opgraph.DotLoadingSpinner
@@ -341,17 +348,27 @@ opctl node and other opctl containers by their name. Containers will be removed 
 					if !noProgressHintShown && time.Since(lastEventAt) > noProgressHintAfter {
 						noProgressHintShown = true
 						// Probe the daemon off the render loop so the spinner
-						// keeps animating while we wait for the result.
+						// keeps animating while we wait for the result. Capture the
+						// quiet period (lastEventAt) being classified so a result
+						// arriving after events resume can be dropped as stale.
+						quietSince := lastEventAt
 						go func() {
 							probeCtx, cancel := context.WithTimeout(ctx, noProgressProbeTimeout)
 							defer cancel()
-							daemonResponsiveChannel <- node.Liveness(probeCtx) == nil
+							daemonResponsiveChannel <- daemonProbeResult{
+								responsive: node.Liveness(probeCtx) == nil,
+								quietSince: quietSince,
+							}
 						}()
 					}
 					displayGraph()
-				case daemonResponsive := <-daemonResponsiveChannel:
+				case probe := <-daemonResponsiveChannel:
 					clearGraph()
-					if daemonResponsive {
+					// Drop a stale probe: if an event arrived after the probe was
+					// launched, lastEventAt has advanced past the quiet period we were
+					// classifying, so the hint would be misleading.
+					stale := !probe.quietSince.Equal(lastEventAt)
+					if !stale && probe.responsive {
 						cliOutput.Info(fmt.Sprintf(
 							"INFO: no output for %s, but the opctl daemon is still responding — this is "+
 								"normal for a long-running or idle step, so usually no action is needed. "+
@@ -360,7 +377,7 @@ opctl node and other opctl containers by their name. Containers will be removed 
 								"resets opctl's caches and state.",
 							noProgressHintAfter,
 						))
-					} else {
+					} else if !stale {
 						cliOutput.Warning(fmt.Sprintf(
 							"warning: the opctl daemon hasn't responded for %s and appears wedged. "+
 								"Restarting Docker usually clears it (note: `docker info` may still report "+

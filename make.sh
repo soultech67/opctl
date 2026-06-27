@@ -199,29 +199,29 @@ first_existing_parent() {
 }
 
 can_install_without_sudo() {
-  # Declare locals so this helper can't clobber a caller's globals. It is called
-  # directly (not via $(...)) from backup_existing_opctl and copy_opctl, both of
-  # which run while install_opctl's $dest holds the real install target; a bare
-  # `dest=$2` here would overwrite that with the backup path and the new binary
-  # would be written to opctl-<version> instead of opctl.
-  local prefix dest parent dest_owner_uid
-  prefix=$1
-  dest=$2
+  # Uniquely-named (ciws_*) variables instead of the non-POSIX `local`: this is
+  # #!/bin/sh and must run under dash. The names must not collide with a
+  # caller's globals -- this helper is called directly (not via $(...)) from
+  # backup_existing_opctl and copy_opctl while install_opctl's $dest holds the
+  # real install target, and a bare `dest=$2` here would overwrite it, sending
+  # the new binary to opctl-<version> instead of opctl.
+  ciws_prefix=$1
+  ciws_dest=$2
 
-  if [ -e "$dest" ]; then
-    [ -w "$dest" ] || return 1
-    dest_owner_uid=$(owner_uid "$dest") || return 1
-    [ "$dest_owner_uid" = "$(id -u)" ] || return 1
+  if [ -e "$ciws_dest" ]; then
+    [ -w "$ciws_dest" ] || return 1
+    ciws_owner_uid=$(owner_uid "$ciws_dest") || return 1
+    [ "$ciws_owner_uid" = "$(id -u)" ] || return 1
     # copy_opctl now installs via a temp file + atomic rename, which creates and
     # renames entries in the parent dir -- so the parent must be writable too,
-    # not just $dest (otherwise we'd pick the no-sudo path and then fail to write
-    # the temp).
-    [ -w "$(dirname "$dest")" ]
+    # not just $ciws_dest (otherwise we'd pick the no-sudo path and then fail to
+    # write the temp).
+    [ -w "$(dirname "$ciws_dest")" ]
     return
   fi
 
-  parent=$(first_existing_parent "$prefix") || return 1
-  [ -w "$parent" ]
+  ciws_parent=$(first_existing_parent "$ciws_prefix") || return 1
+  [ -w "$ciws_parent" ]
 }
 
 ensure_sudo() {
@@ -232,31 +232,32 @@ ensure_sudo() {
 }
 
 copy_opctl() {
-  local src_bin prefix dest tmp
-  src_bin=$1
-  prefix=$2
-  dest=$3
+  # Uniquely-named (co_*) variables instead of the non-POSIX `local`; see
+  # can_install_without_sudo for why this #!/bin/sh script avoids `local`.
+  co_src=$1
+  co_prefix=$2
+  co_dest=$3
 
-  # Install via a temp file + atomic rename instead of overwriting $dest in
+  # Install via a temp file + atomic rename instead of overwriting $co_dest in
   # place. macOS caches a binary's code signature per vnode/inode; `cp`-ing over
   # a binary that was previously launched at this path reuses the inode, so the
   # new bytes are verified against the OLD cached signature and the process is
-  # SIGKILLed on launch (`opctl -v` -> "killed", exit 137). A rename gives $dest
-  # a fresh inode so the new signature is checked cleanly, and the swap is atomic
-  # (no window where $dest is missing or half-written). Temp lives in the dest
-  # dir so the rename stays on one filesystem.
-  tmp="$dest.install.$$"
+  # SIGKILLed on launch (`opctl -v` -> "killed", exit 137). A rename gives the
+  # dest a fresh inode so the new signature is checked cleanly, and the swap is
+  # atomic (no window where it is missing or half-written). Temp lives in the
+  # dest dir so the rename stays on one filesystem.
+  co_tmp="$co_dest.install.$$"
 
-  if can_install_without_sudo "$prefix" "$dest"; then
-    mkdir -p "$prefix"
-    cp "$src_bin" "$tmp" && chmod +x "$tmp" && mv -f "$tmp" "$dest" || { rm -f "$tmp"; return 1; }
+  if can_install_without_sudo "$co_prefix" "$co_dest"; then
+    mkdir -p "$co_prefix"
+    cp "$co_src" "$co_tmp" && chmod +x "$co_tmp" && mv -f "$co_tmp" "$co_dest" || { rm -f "$co_tmp"; return 1; }
     return
   fi
 
-  ensure_sudo "$dest"
-  echo "installing $dest with sudo"
-  sudo mkdir -p "$prefix"
-  sudo cp "$src_bin" "$tmp" && sudo chmod +x "$tmp" && sudo mv -f "$tmp" "$dest" || { sudo rm -f "$tmp"; return 1; }
+  ensure_sudo "$co_dest"
+  echo "installing $co_dest with sudo"
+  sudo mkdir -p "$co_prefix"
+  sudo cp "$co_src" "$co_tmp" && sudo chmod +x "$co_tmp" && sudo mv -f "$co_tmp" "$co_dest" || { sudo rm -f "$co_tmp"; return 1; }
 }
 
 # extract_opctl_version invokes "<bin> -v" to read the version string baked in
@@ -294,42 +295,42 @@ extract_opctl_version() {
 # var, default 0.0.0), so the snapshot fallback only applies to stray builds
 # with no version baked in.
 backup_existing_opctl() {
-  local existing prefix version backup_name backup_path
+  # Uniquely-named (beo_*) variables instead of the non-POSIX `local`; see
+  # can_install_without_sudo for why this #!/bin/sh script avoids `local`.
+  beo_existing=$1
+  beo_prefix=$2
 
-  existing=$1
-  prefix=$2
-
-  if [ -z "$existing" ] || [ ! -f "$existing" ]; then
+  if [ -z "$beo_existing" ] || [ ! -f "$beo_existing" ]; then
     return 0
   fi
 
-  if version=$(extract_opctl_version "$existing"); then
+  if beo_version=$(extract_opctl_version "$beo_existing"); then
     # Never back up the default-version dev build. `make install` with no
     # VERSION bakes in 0.0.0, so an opctl-0.0.0 "backup" is a throwaway dev
     # binary, not a release worth keeping -- and it only clutters the backup
     # set that `make uninstall` restores from.
-    if [ "$version" = "0.0.0" ]; then
+    if [ "$beo_version" = "0.0.0" ]; then
       echo "current opctl reports version 0.0.0 (unversioned dev build); skipping backup"
       return 0
     fi
-    backup_name=opctl-$version
+    beo_name=opctl-$beo_version
   else
-    backup_name=opctl-snapshot-$(date +%Y%m%d-%H%M%S)
-    echo "could not determine current opctl version (likely a dev build); using $backup_name"
+    beo_name=opctl-snapshot-$(date +%Y%m%d-%H%M%S)
+    echo "could not determine current opctl version (likely a dev build); using $beo_name"
   fi
-  backup_path=$prefix/$backup_name
+  beo_path=$beo_prefix/$beo_name
 
-  if [ -e "$backup_path" ]; then
-    echo "backup already exists ($backup_path); leaving as-is"
+  if [ -e "$beo_path" ]; then
+    echo "backup already exists ($beo_path); leaving as-is"
     return 0
   fi
 
-  echo "backing up $existing to $backup_path"
-  if can_install_without_sudo "$prefix" "$backup_path"; then
-    cp "$existing" "$backup_path"
+  echo "backing up $beo_existing to $beo_path"
+  if can_install_without_sudo "$beo_prefix" "$beo_path"; then
+    cp "$beo_existing" "$beo_path"
   else
-    ensure_sudo "$backup_path"
-    sudo cp "$existing" "$backup_path"
+    ensure_sudo "$beo_path"
+    sudo cp "$beo_existing" "$beo_path"
   fi
 }
 
