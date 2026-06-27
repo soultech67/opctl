@@ -65,6 +65,27 @@ var _ = Context("output", func() {
 				To(Equal(expectedWriteArg))
 		})
 	})
+	Context("Info", func() {
+		providedFormat := "dummyFormat %v %v"
+		It("should call stdWriter w/ expected args", func() {
+			/* arrange */
+			expectedWriteArg := fmt.Sprintln(_cliColorer.Info(providedFormat))
+
+			fakeStdWriter := new(fakeWriter)
+			objectUnderTest := New(
+				_cliColorer,
+				new(fakeWriter),
+				fakeStdWriter,
+			)
+
+			/* act */
+			objectUnderTest.Info(providedFormat)
+
+			/* assert */
+			Expect(string(fakeStdWriter.WriteArgsForCall(0))).
+				To(Equal(expectedWriteArg))
+		})
+	})
 	Context("Error", func() {
 		providedFormat := "dummyFormat %v %v"
 		It("should call errWriter w/ expected args", func() {

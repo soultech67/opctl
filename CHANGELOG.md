@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file in
 accordance with
 [![keepachangelog 1.0.0](https://img.shields.io/badge/keepachangelog-1.0.0-brightgreen.svg)](http://keepachangelog.com/en/1.0.0/)
 
+## [0.1.80] - 2026-06-25
+
+### Fixed
+
+- `make install` now actually replaces `opctl` with the binary it just built. A shell-variable leak left `opctl -v` reporting the *old* version after a
+  successful build+install: the install helpers are POSIX `sh` functions with no scoping, and `can_install_without_sudo` assigned the global `$dest`
+  while backing up the existing binary, redirecting the install to the backup path (`opctl-<oldversion>`) and leaving `opctl` itself untouched. The
+  helpers in the install/uninstall path now use uniquely-named (function-prefixed) variables — staying POSIX `sh`, no `local` — so they can't clobber
+  the caller's install target
+- `make install` no longer creates an `opctl-0.0.0` backup. A binary reporting the default dev version (`0.0.0` — `make install` with no `VERSION`) is a
+  throwaway build, not a release worth preserving, and it only cluttered the backup set `make uninstall` restores from; that case is now skipped
+- `make install` no longer silently destroys the binary it overwrites. `backup_existing_opctl` now keys the backup to the version of the binary being
+  replaced (`opctl-<version>`) and skips only if *that exact version* is already backed up. Previously it skipped whenever any `opctl-*` backup existed,
+  so e.g. `make install VERSION=1.0.80` over an installed `1.0.79` (with an old `opctl-0.1.77` already present) lost `1.0.79` with no recoverable backup
+- `make uninstall` now restores the previous binary through the same temp-file + atomic-rename path as install (`copy_opctl`) instead of an in-place
+  `cp`, avoiding the macOS per-inode code-signature SIGKILL ("killed", exit 137) that the new bytes would otherwise hit when verified against the
+  replaced binary's cached signature
+- `find_highest_opctl_backup` now selects the backup to restore by the version embedded in the filename, treating non-version snapshot names as a last
+  resort only. Raw `sort -V` had ranked `opctl-snapshot-*` above real releases, so uninstall could restore an older snapshot over a newer release
+
+### Changed
+
+- `make uninstall` now stops the daemon with `opctl node kill` (which keeps the data dir) instead of the destructive `node delete`; the restore only
+  needs the daemon stopped, not the node's data removed
+- The CLI no-progress hint now probes `node.Liveness` when the event stream goes quiet, distinguishing a genuinely wedged daemon from an op that is
+  simply idle instead of always blaming Docker after a fixed timeout. The healthy-but-idle case prints a calm, non-actionable note (new
+  `CliOutput.Info`) and the red warning is reserved for an unresponsive daemon. The misleading `docker info` lead is dropped (it reports healthy during
+  these lockups) in favour of the recovery ladder that works: restart Docker, then `opctl node delete`
+
 ## [0.1.79] - 2026-06-03
 
 ### Fixed
