@@ -64,6 +64,8 @@ Unlike [dirs](#dirs) bindings, named volumes live inside the container runtime â
 
 > volume names must start with an alphanumeric character, followed by alphanumerics, `_`, `.`, or `-`
 
+> volume names are global to the container runtime: any two containers (in the same op or different ops/projects) referencing the same name share the same volume. This makes cross-run and cross-op sharing possible, but to avoid accidental collisions use a project-unique name â€” [string interpolation](../../../../types/string.md#initialization) (e.g. `myproject-$(dbName)-data`) makes namespacing easy.
+
 ### workDir
 A [string initializer](../../../../types/string.md#initialization) defining absolute path from which [cmd](#cmd) will be executed.
 

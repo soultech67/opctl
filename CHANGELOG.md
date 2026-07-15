@@ -13,8 +13,9 @@ accordance with
   on a host-shared path, so high-write-rate workloads (e.g. database data directories) don't stream filesystem-change events across Docker
   Desktop's file-sharing layer, and the data persists across container runs — opctl's container cleanup uses `docker rm -v` semantics, which
   removes anonymous volumes only, never named ones. Values are string expressions (literals, `$(ref)`, or interpolation) validated against
-  Docker's volume-name rules at interpret time; missing volumes are created on first use. The k8s container runtime ignores `volumes` (as it
-  already does `sockets` and `ports`)
+  Docker's volume-name rules at interpret time; missing volumes are created on first use. The k8s container runtime doesn't support `volumes`
+  and (unlike `sockets` and `ports`, which it silently ignores) warns on the container call's stderr, since silently dropping a persistence
+  request would be a sharper edge
 
 ## [0.1.80] - 2026-06-25
 
