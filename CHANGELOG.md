@@ -16,6 +16,9 @@ accordance with
   Docker's volume-name rules at interpret time; missing volumes are created on first use. The k8s container runtime doesn't support `volumes`
   and (unlike `sockets` and `ports`, which it silently ignores) warns on the container call's stderr, since silently dropping a persistence
   request would be a sharper edge
+- Integrated upstream [opctl/opctl 0.1.76](https://github.com/opctl/opctl/releases/tag/v0.1.76): proxy env vars (`HTTP_PROXY`, `HTTPS_PROXY`,
+  `NO_PROXY`, `ALL_PROXY`, and their lowercase forms) from the opctl node's environment are now propagated into op containers (unless the op
+  already set them), and the CLI passes them through to the daemonized node it launches
 
 ## [0.1.80] - 2026-06-25
 
