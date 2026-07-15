@@ -12,6 +12,7 @@ func constructHostConfig(
 	containerCallDirs map[string]string,
 	containerCallFiles map[string]string,
 	containerCallSockets map[string]string,
+	containerCallVolumes map[string]string,
 	portBindings nat.PortMap,
 	isGpuSupported bool,
 ) *container.HostConfig {
@@ -52,6 +53,19 @@ func constructHostConfig(
 				Source:      hostDirPath,
 				Target:      containerDirPath,
 				Consistency: mount.ConsistencyCached,
+			},
+		)
+	}
+	for containerVolumePath, volumeName := range containerCallVolumes {
+		// named volumes live inside the container runtime (never host-bound),
+		// are created on first use, and survive container removal; opctl's
+		// cleanup uses RemoveVolumes which only deletes anonymous volumes
+		hostConfig.Mounts = append(
+			hostConfig.Mounts,
+			mount.Mount{
+				Type:   mount.TypeVolume,
+				Source: volumeName,
+				Target: containerVolumePath,
 			},
 		)
 	}

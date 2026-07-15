@@ -15,6 +15,7 @@ An object defining a container call.
   - [files](#files)
   - [name](#name)
   - [sockets](#sockets)
+  - [volumes](#volumes)
   - [workDir](#workdir)
 
 ### image
@@ -55,6 +56,13 @@ A [string initializer](../../../../types/string.md#initialization) defining a na
 
 ### sockets
 An object for which each key is an absolute path in the container and and each value is a [socket](../../../../types/socket.md) [variable-reference [string]](../../variable-reference.md) to mount. 
+
+### volumes
+An object for which each key is an absolute path in the container and each value is a [string initializer](../../../../types/string.md#initialization) naming a container-runtime-managed named volume (e.g. a Docker named volume) to mount at that path.
+
+Unlike [dirs](#dirs) bindings, named volumes live inside the container runtime — they're never bound to a host directory, so writes don't cross the host file-sharing layer (useful for high-write-rate workloads like database data directories). They're created on first use and persist across container runs until explicitly removed (e.g. `docker volume rm <name>`).
+
+> volume names must start with an alphanumeric character, followed by alphanumerics, `_`, `.`, or `-`
 
 ### workDir
 A [string initializer](../../../../types/string.md#initialization) defining absolute path from which [cmd](#cmd) will be executed.

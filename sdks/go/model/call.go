@@ -45,6 +45,8 @@ type ContainerCall struct {
 	Image *ContainerCallImage `json:"image"`
 	// format: containerSocket => hostSocket
 	Sockets map[string]string `json:"sockets"`
+	// format: containerPath => named volume
+	Volumes map[string]string `json:"volumes,omitempty"`
 	WorkDir string            `json:"workDir"`
 	Name    *string           `json:"name,omitempty"`
 	Ports   map[string]string `json:"ports,omitempty"`

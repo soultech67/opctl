@@ -37,10 +37,12 @@ type ContainerCallSpec struct {
 	Files   map[string]interface{}  `json:"files,omitempty"`
 	Image   *ContainerCallImageSpec `json:"image"`
 	Sockets map[string]string       `json:"sockets,omitempty"`
-	WorkDir string                  `json:"workDir,omitempty"`
-	Name    *string                 `json:"name,omitempty"`
-	Ports   map[string]string       `json:"ports,omitempty"`
-	Log     *ContainerLogSpec       `json:"log,omitempty"`
+	// Volumes entries will be interpreted to strings; format: containerPath => volume name
+	Volumes map[string]string `json:"volumes,omitempty"`
+	WorkDir string            `json:"workDir,omitempty"`
+	Name    *string           `json:"name,omitempty"`
+	Ports   map[string]string `json:"ports,omitempty"`
+	Log     *ContainerLogSpec `json:"log,omitempty"`
 }
 
 // ContainerCallImageSpec is a spec for the image when calling a container

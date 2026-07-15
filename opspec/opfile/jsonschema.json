@@ -976,6 +976,17 @@
               },
               "additionalProperties": false
             },
+            "volumes": {
+              "type": "object",
+              "description": "Container-runtime-managed named volumes mounted in the container. Unlike dirs bindings, named volumes live inside the container runtime (never on a host-shared path), are created on first use, and persist across container runs until explicitly removed",
+              "patternProperties": {
+                "^([a-zA-Z]:)?[-_.\\/a-zA-Z0-9]+$": {
+                  "description": "String expression (literal, variable reference, or interpolation) naming the named volume to mount at the container path",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
             "workDir": {
               "description": "Working directory path (overrides any defined by image)",
               "type": "string"

@@ -193,6 +193,7 @@ var _ = Context("caller", func() {
 							Ref: &imageSpec.Ref,
 						},
 						Sockets: map[string]string{},
+						Volumes: map[string]string{},
 					},
 				}
 
