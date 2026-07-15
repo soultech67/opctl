@@ -178,6 +178,9 @@ var _ = Context("RunContainer", func() {
 				Sockets: map[string]string{
 					"/unixSocket1ContainerAddress": "/unixSocket1HostAddress",
 				},
+				Volumes: map[string]string{
+					"/volume1ContainerPath": "volume1Name",
+				},
 				Ports: map[string]string{
 					"80": "80",
 				},
@@ -228,6 +231,16 @@ var _ = Context("RunContainer", func() {
 						BindOptions:   nil,
 						TmpfsOptions:  nil,
 						VolumeOptions: nil,
+					},
+					{
+						Type:          "volume",
+						Source:        "volume1Name",
+						Target:        "/volume1ContainerPath",
+						ReadOnly:      false,
+						Consistency:   "",
+						BindOptions:   nil,
+						VolumeOptions: nil,
+						TmpfsOptions:  nil,
 					},
 					{
 						Type:          "bind",

@@ -101,6 +101,12 @@ func (cr _containerRuntime) RunContainer(
 	defer stdout.Close()
 	defer stderr.Close()
 
+	// volumes exist for data persistence, so a silent no-op (the sockets/ports
+	// precedent) would be a sharper edge here — surface it on the call's stderr
+	if len(req.Volumes) > 0 {
+		fmt.Fprintf(stderr, "warning: the k8s container runtime doesn't support volumes; ignoring %d volume(s)\n", len(req.Volumes))
+	}
+
 	pod, err := constructPod(req)
 	if err != nil {
 		return nil, err

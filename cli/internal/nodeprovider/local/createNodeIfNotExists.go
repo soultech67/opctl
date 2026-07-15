@@ -16,6 +16,7 @@ import (
 
 	"github.com/opctl/opctl/cli/internal/euid0"
 	"github.com/opctl/opctl/sdks/go/node"
+	"github.com/opctl/opctl/sdks/go/node/containerruntime"
 	"github.com/opctl/opctl/sdks/go/node/logging"
 )
 
@@ -116,22 +117,7 @@ func (np nodeProvider) CreateNodeIfNotExists(
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 
-	// don't inherit env wholesale; some things like jenkins track and kill
-	// processes via injecting env vars. Forward only the minimum the daemon
-	// genuinely needs, plus an opt-in passlist of OPCTL_* tuning vars that
-	// influence runtime behavior (see daemonEnvPassThroughVars).
-	cmd.Env = []string{
-		fmt.Sprintf("HOME=%s", os.Getenv("HOME")),
-		fmt.Sprintf("PATH=%s", os.Getenv("PATH")),
-		// set by sudo; passthru so we maintain provenance for use by "unsudo"
-		fmt.Sprintf("SUDO_GID=%s", os.Getenv("SUDO_GID")),
-		fmt.Sprintf("SUDO_UID=%s", os.Getenv("SUDO_UID")),
-	}
-	for _, name := range daemonEnvPassThroughVars {
-		if value, ok := os.LookupEnv(name); ok {
-			cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", name, value))
-		}
-	}
+	cmd.Env = daemonEnv()
 
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		// Run the daemon in a new session: its own session and process group,
@@ -181,4 +167,37 @@ func (np nodeProvider) CreateNodeIfNotExists(
 	}
 
 	return apiClientNode, nil
+}
+
+// daemonEnv builds the environment for the daemonized node process.
+//
+// We deliberately don't inherit the full env; some things (e.g. jenkins) track
+// and kill processes via injected env vars. We pass through only what the node
+// needs: HOME & PATH, the SUDO_* provenance used by "unsudo", an opt-in
+// passlist of OPCTL_* tuning vars that influence runtime behavior (see
+// daemonEnvPassThroughVars), and the proxy vars so the node (and the op
+// containers it runs, see containerruntime.ProxyEnvVars) can reach the network
+// on hosts whose only egress route is an HTTP/HTTPS forward proxy (e.g. CI
+// runners).
+func daemonEnv() []string {
+	env := []string{
+		fmt.Sprintf("HOME=%s", os.Getenv("HOME")),
+		fmt.Sprintf("PATH=%s", os.Getenv("PATH")),
+		// set by sudo; passthru so we maintain provenance for use by "unsudo"
+		fmt.Sprintf("SUDO_GID=%s", os.Getenv("SUDO_GID")),
+		fmt.Sprintf("SUDO_UID=%s", os.Getenv("SUDO_UID")),
+	}
+
+	for _, name := range daemonEnvPassThroughVars {
+		if value, ok := os.LookupEnv(name); ok {
+			env = append(env, fmt.Sprintf("%s=%s", name, value))
+		}
+	}
+
+	// passing nil yields every proxy var present in this process's environment
+	for name, value := range containerruntime.ProxyEnvVars(nil) {
+		env = append(env, fmt.Sprintf("%s=%s", name, value))
+	}
+
+	return env
 }

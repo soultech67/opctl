@@ -12,6 +12,7 @@ import (
 	"github.com/opctl/opctl/sdks/go/opspec/interpreter/call/container/image"
 	"github.com/opctl/opctl/sdks/go/opspec/interpreter/call/container/logs"
 	"github.com/opctl/opctl/sdks/go/opspec/interpreter/call/container/sockets"
+	"github.com/opctl/opctl/sdks/go/opspec/interpreter/call/container/volumes"
 	"github.com/opctl/opctl/sdks/go/opspec/interpreter/str"
 )
 
@@ -132,6 +133,15 @@ func Interpret(
 		scope,
 		containerCallSpec.Sockets,
 		scratchDirPath,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// interpret volumes
+	containerCall.Volumes, err = volumes.Interpret(
+		scope,
+		containerCallSpec.Volumes,
 	)
 	if err != nil {
 		return nil, err

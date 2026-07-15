@@ -159,6 +159,72 @@ var _ = Context("Interpret", func() {
 		})
 	})
 
+	Context("volumes.Interpret errors", func() {
+		It("should return expected error", func() {
+			/* arrange */
+			dataDir, err := os.MkdirTemp("", "")
+			if err != nil {
+				panic(err)
+			}
+
+			/* act */
+			_, actualErr := Interpret(
+				map[string]*model.Value{},
+				&model.ContainerCallSpec{
+					Image: &model.ContainerCallImageSpec{
+						Ref: "ref",
+					},
+					Volumes: map[string]string{
+						"/data": "$(notInScope)",
+					},
+				},
+				"dummyContainerID",
+				"dummyOpPath",
+				dataDir,
+			)
+
+			/* assert */
+			Expect(actualErr).To(MatchError("unable to bind volume /data to $(notInScope): unable to interpret $(notInScope) to string: unable to interpret 'notInScope' as reference: 'notInScope' not in scope"))
+		})
+	})
+
+	Context("volumes specified", func() {
+		It("should return expected volumes", func() {
+			/* arrange */
+			volumeName := "pgdata"
+			dataDir, err := os.MkdirTemp("", "")
+			if err != nil {
+				panic(err)
+			}
+
+			/* act */
+			actualResult, actualErr := Interpret(
+				map[string]*model.Value{
+					"myVolume": {String: &volumeName},
+				},
+				&model.ContainerCallSpec{
+					Image: &model.ContainerCallImageSpec{
+						Ref: "ref",
+					},
+					Volumes: map[string]string{
+						"/var/lib/postgresql/data": "$(myVolume)",
+						"/cache":                   "literal-name",
+					},
+				},
+				"dummyContainerID",
+				"dummyOpPath",
+				dataDir,
+			)
+
+			/* assert */
+			Expect(actualErr).To(BeNil())
+			Expect(actualResult.Volumes).To(Equal(map[string]string{
+				"/var/lib/postgresql/data": volumeName,
+				"/cache":                   "literal-name",
+			}))
+		})
+	})
+
 	It("should return expected result", func() {
 		/* arrange */
 		providedContainerID := "providedContainerID"
@@ -178,6 +244,7 @@ var _ = Context("Interpret", func() {
 				Ref: &expectedRef,
 			},
 			Sockets: map[string]string{},
+			Volumes: map[string]string{},
 			WorkDir: "",
 		}
 

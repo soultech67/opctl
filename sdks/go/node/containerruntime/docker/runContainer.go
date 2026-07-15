@@ -184,6 +184,7 @@ func (cr _runContainer) RunContainer(
 				req.Dirs,
 				req.Files,
 				req.Sockets,
+				req.Volumes,
 				portBindings,
 				isGpuSupported,
 			),

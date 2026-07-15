@@ -26,6 +26,11 @@ var _ = Context("constructHostConfig", func() {
 			"/unixSocket2ContainerAddress": "/unixSocket2HostAddress",
 		}
 
+		providedContainerVolumes := map[string]string{
+			"volume1ContainerPath": "volume1Name",
+			"volume2ContainerPath": "volume2Name",
+		}
+
 		providedPortBindings := nat.PortMap{
 			"6060/udp": []nat.PortBinding{{HostPort: "6060"}},
 			"8080/tcp": []nat.PortBinding{{HostPort: "9090"}},
@@ -68,6 +73,16 @@ var _ = Context("constructHostConfig", func() {
 					Source: "/unixSocket2HostAddress",
 					Target: "/unixSocket2ContainerAddress",
 				},
+				{
+					Type:   mount.TypeVolume,
+					Source: "volume1Name",
+					Target: "volume1ContainerPath",
+				},
+				{
+					Type:   mount.TypeVolume,
+					Source: "volume2Name",
+					Target: "volume2ContainerPath",
+				},
 			},
 			PortBindings: providedPortBindings,
 			Privileged:   true,
@@ -86,6 +101,7 @@ var _ = Context("constructHostConfig", func() {
 			providedContainerDirs,
 			providedContainerFiles,
 			providedContainerSockets,
+			providedContainerVolumes,
 			providedPortBindings,
 			true,
 		)

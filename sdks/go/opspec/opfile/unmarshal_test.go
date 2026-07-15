@@ -78,4 +78,47 @@ var _ = Context("Unmarshal", func() {
 			Expect(string(actualBytes)).To(Equal(string(expectedBytes)))
 		})
 	})
+	Context("container call w/ volumes", func() {
+		It("should validate against the opfile schema and unmarshal", func() {
+			/* arrange */
+			providedBytes := []byte(`name: testop
+description: test
+run:
+  container:
+    image:
+      ref: alpine
+    volumes:
+      /var/lib/postgresql/data: pgdata
+`)
+
+			/* act */
+			actualOpFile, actualErr := Unmarshal(providedBytes)
+
+			/* assert */
+			Expect(actualErr).To(BeNil())
+			Expect(actualOpFile.Run.Container.Volumes).To(Equal(map[string]string{
+				"/var/lib/postgresql/data": "pgdata",
+			}))
+		})
+	})
+	Context("container call w/ non-string volumes value", func() {
+		It("should fail schema validation (not raw unmarshal)", func() {
+			/* arrange */
+			providedBytes := []byte(`name: testop
+description: test
+run:
+  container:
+    image:
+      ref: alpine
+    volumes:
+      /data: [a, b]
+`)
+
+			/* act */
+			_, actualErr := Unmarshal(providedBytes)
+
+			/* assert */
+			Expect(actualErr).To(MatchError(ContainSubstring("Invalid type. Expected: string, given: array")))
+		})
+	})
 })

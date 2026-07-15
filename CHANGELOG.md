@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file in
 accordance with
 [![keepachangelog 1.0.0](https://img.shields.io/badge/keepachangelog-1.0.0-brightgreen.svg)](http://keepachangelog.com/en/1.0.0/)
 
+## [0.1.81] - 2026-07-14
+
+### Added
+
+- Container calls support a new `volumes` property mapping an absolute container path to the name of a container-runtime-managed named volume
+  (`--mount type=volume` semantics in the Docker runtime). Unlike `dirs` bindings, named volumes live inside the container runtime rather than
+  on a host-shared path, so high-write-rate workloads (e.g. database data directories) don't stream filesystem-change events across Docker
+  Desktop's file-sharing layer, and the data persists across container runs — opctl's container cleanup uses `docker rm -v` semantics, which
+  removes anonymous volumes only, never named ones. Values are string expressions (literals, `$(ref)`, or interpolation) validated against
+  Docker's volume-name rules at interpret time; missing volumes are created on first use. The k8s container runtime doesn't support `volumes`
+  and (unlike `sockets` and `ports`, which it silently ignores) warns on the container call's stderr, since silently dropping a persistence
+  request would be a sharper edge
+- Integrated upstream [opctl/opctl 0.1.76](https://github.com/opctl/opctl/releases/tag/v0.1.76): proxy env vars (`HTTP_PROXY`, `HTTPS_PROXY`,
+  `NO_PROXY`, `ALL_PROXY`, and their lowercase forms) from the opctl node's environment are now propagated into op containers (unless the op
+  already set them), and the CLI passes them through to the daemonized node it launches
+
 ## [0.1.80] - 2026-06-25
 
 ### Fixed
