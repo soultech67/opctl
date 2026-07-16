@@ -6,7 +6,7 @@
 
 **What changed in v2:**
 - **17 PRs → 8 PRs**, grouped by functionality vertical so each PR ships the **fork-final, fork-tested state** of its files. The v1 split required assembling intermediate variants that never existed as tested commits (e.g., a "pre-instrumentation" container-identity PR shipping Docker calls with known hang bugs that a later PR fixed, and daemon diagnostics that went to a dead pipe until the logging PR landed). Verticals eliminate that entirely — no known-buggy intermediate states are ever pushed upstream.
-- **New hard invariant (owner mandate):** `README.md` is **never touched in any PR**. The fork's README rebrand — including removal of the owner's Support-Ukraine header — stays fork-local, permanently. That header is the upstream owner's statement and we do not interfere with it. `opctl_icon.png` likewise never ships. (Verified: no PR file list includes README.md or the icon.)
+- **New hard invariant (owner mandate):** `README.md` is **never touched in any code PR**. The fork's README rebrand — including removal of the owner's Support-Ukraine header — stays fork-local, permanently. That header is the upstream owner's statement and we do not interfere with it. `opctl_icon.png` likewise never ships. (Verified: no code PR file list includes README.md or the icon.) One carve-out added 2026-07-16: optional PR 0 proposes Lium AI in upstream's existing `# Used By` list — see §2.1.
 
 ---
 
@@ -25,12 +25,12 @@
 
 ## 2. Hard invariants (every PR)
 
-1. **`README.md` is untouched.** The Support-Ukraine header and everything else in upstream's README stays exactly as the owner has it. No icon, no badges, no header changes — ever.
+1. **`README.md` is untouched in every code PR.** The Support-Ukraine header and everything else in upstream's README stays exactly as the owner has it. No icon, no badges, no header changes — ever. **Single exception (owner-approved 2026-07-16):** the optional PR 0 adds one line — `Lium AI` — to upstream's existing `# Used By` section, which itself invites additions ("represent by adding yours"); whether it lands is the upstream owner's call on that PR. Nothing else in README is ever touched.
 2. **No make — ever (owner mandate).** The upstream team is against make: `Makefile`, `make.sh`, and anything make-associated never appear in any PR, in any form — not adapted, not genericized, not referenced. This also means no `make ...` invocations in code comments, op descriptions, PR bodies, or CHANGELOG entries (upstream's workflows are opctl ops: `opctl run compile` / `opctl run test`).
 3. No AI-workflow artifacts: `.serena/**`, `CLAUDE.md`, `RTK.md`, `AGENTS.md`, `.rtk/**`, `.graphify_python`, `graphify-out/**`, `.github/workflows/claude*.yml`.
 4. Nothing from the top-level `docs/` folder (upstream has no `docs/` at all; `website/docs/**` is a different path and IS shipped where relevant).
-5. No fork branding: no `soultech67` refs, no Lium AI, no `opctl_icon.png`, no fork CHANGELOG version entries, no private `astro` tooling, no Slack machinery.
-6. Pre-post grep on every assembled branch: `grep -rE 'soultech67|astro|Lium|0\.1\.7[7-9]|Slack|graphify|Makefile|make\.sh|make (test|release|install|build)' <changed files>` — zero hits.
+5. No fork branding in code PRs: no `soultech67` refs, no Lium AI references in code/fixtures/comments, no `opctl_icon.png`, no fork CHANGELOG version entries, no private `astro` tooling, no Slack machinery. (Lium AI as a proposed *adopter* is PR 0's whole purpose — see §2.1.)
+6. Pre-post grep on every assembled branch: `grep -rE 'soultech67|astro|Lium|0\.1\.7[7-9]|Slack|graphify|Makefile|make\.sh|make (test|release|install|build)' <changed files>` — zero hits (PR 0 exempt from the `Lium` term, nothing else).
 
 ## 3. Upstream conventions (verified from upstream/main + gh)
 
@@ -81,6 +81,7 @@ If PR 1 stalls on #1181 coordination, PR 6's only hard need from it is `test_hel
 
 | # | id | Title | ~LOC | Absorbs (v1) | Depends on |
 |---|---|---|---|---|---|
+| 0 | lium-adopter (optional) | docs: add Lium AI to Used By | 2 | — | — (ideal first contact) |
 | 1 | dns-network | fix(node): clean up leaked DNS resolver configs; self-heal macOS container networking | 190 | 4 | — |
 | 2 | daemon-observability | fix/feat(node): daemon lifecycle fixes + durable rotating logs + `opctl doctor` | 1,900 | 3, 14, 15 | — |
 | 3 | cli-ux | feat(cli): events filters, `ui --no-open`, no-progress hint, update hint | 815 | 5, 6, 7, 8 | 2 (root.go rebase) |
@@ -90,11 +91,19 @@ If PR 1 stalls on #1181 coordination, PR 6's only hard need from it is `test_hel
 | 7 | container-logs | feat(node): persist container stdout/stderr to rotating logs (+ data-dir ownership fix) | 1,390 | 1, 16 | 2 |
 | 8 | ci-restructure | ci(test): self-contained test op, gated e2e, nightly full run, fork-PR support | 350 | 2, 17 | — (discuss first) |
 
-Total: 8 PRs, versions 0.1.77–0.1.84 as they land.
+Total: 8 code PRs (versions 0.1.77–0.1.84 as they land) plus optional PR 0, which also takes a version number — upstream's changelog gate applies to every PR, and each merge auto-cuts a release.
 
 ---
 
 ## 6. Per-PR detail
+
+### PR 0 (optional) — docs: add Lium AI to Used By
+
+- **Branch:** `upstream-pr/0-lium-adopter` · **2 lines** · **Depends on:** nothing · **Open anytime — ideal first contact with the maintainers before the code series.**
+- **Goal:** Add `[Lium AI](https://www.lium.ai)` to upstream README's existing `# Used By` list, whose own text invites additions ("These awesome companies use opctl. represent by adding yours..."). Whether it lands is entirely the owner's call — a zero-risk way to open the relationship.
+- **Files:** `README.md` (one list line — nothing else in the file, per §2.1), `CHANGELOG.md` (upstream CI requires every PR to touch it; note the merge auto-cuts a release, so a version heading is needed even for this one-liner — worth acknowledging in the PR body and letting the maintainer batch it with another merge if they prefer).
+- **CHANGELOG (Changed):** README: add Lium AI to Used By.
+- **Risks:** none beyond a possible "no releases for docs" objection — offer to fold the line into any other PR instead.
 
 ### PR 1 — fix(node): clean up leaked DNS resolver configs and self-heal macOS container networking
 
@@ -256,7 +265,7 @@ Total: 8 PRs, versions 0.1.77–0.1.84 as they land.
 
 **Hard-excluded by mandate:** `.serena/**` (7), `CLAUDE.md`, `RTK.md`, `AGENTS.md`, `.rtk/filters.toml`, `.graphify_python`, `graphify-out/**` (12), `.github/workflows/claude*.yml` (2), the entire top-level `docs/` folder (5). Comments/descriptions referencing `docs/environment-variables.md` are rewritten in PRs 2/6/7.
 
-**README.md — owner mandate (see §2.1):** never touched in any PR. The fork's README rebrand (Support-Ukraine header removal, soultech67 badges, Lium AI section, `opctl_icon.png`) is fork-local, permanently. The upstream owner's Support-Ukraine header stays exactly as they wrote it.
+**README.md — owner mandate (see §2.1):** never touched in any code PR. The fork's README rebrand (Support-Ukraine header removal, soultech67 badges, `opctl_icon.png`) is fork-local, permanently. The upstream owner's Support-Ukraine header stays exactly as they wrote it. The Lium AI "Used By" line is the one piece proposed upstream — as optional PR 0, a single line in the existing adopters list, for the owner to approve or decline.
 
 **Already upstream:** `proxyEnv.go`, `proxyEnv_test.go`, `daemonEnv_test.go`, `k8s/constructPod.go` (byte-identical), plus the `daemonEnv()` extraction hunks.
 
