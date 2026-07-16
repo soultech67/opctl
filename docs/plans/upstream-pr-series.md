@@ -26,10 +26,11 @@
 ## 2. Hard invariants (every PR)
 
 1. **`README.md` is untouched.** The Support-Ukraine header and everything else in upstream's README stays exactly as the owner has it. No icon, no badges, no header changes — ever.
-2. No AI-workflow artifacts: `.serena/**`, `CLAUDE.md`, `RTK.md`, `AGENTS.md`, `.rtk/**`, `.graphify_python`, `graphify-out/**`, `.github/workflows/claude*.yml`.
-3. Nothing from the top-level `docs/` folder (upstream has no `docs/` at all; `website/docs/**` is a different path and IS shipped where relevant).
-4. No fork branding: no `soultech67` refs, no Lium AI, no `opctl_icon.png`, no fork CHANGELOG version entries, no private `astro` tooling, no Slack machinery.
-5. Pre-post grep on every assembled branch: `grep -rE 'soultech67|astro|Lium|0\.1\.7[7-9]|Slack|graphify' <changed files>` — zero hits.
+2. **No make — ever (owner mandate).** The upstream team is against make: `Makefile`, `make.sh`, and anything make-associated never appear in any PR, in any form — not adapted, not genericized, not referenced. This also means no `make ...` invocations in code comments, op descriptions, PR bodies, or CHANGELOG entries (upstream's workflows are opctl ops: `opctl run compile` / `opctl run test`).
+3. No AI-workflow artifacts: `.serena/**`, `CLAUDE.md`, `RTK.md`, `AGENTS.md`, `.rtk/**`, `.graphify_python`, `graphify-out/**`, `.github/workflows/claude*.yml`.
+4. Nothing from the top-level `docs/` folder (upstream has no `docs/` at all; `website/docs/**` is a different path and IS shipped where relevant).
+5. No fork branding: no `soultech67` refs, no Lium AI, no `opctl_icon.png`, no fork CHANGELOG version entries, no private `astro` tooling, no Slack machinery.
+6. Pre-post grep on every assembled branch: `grep -rE 'soultech67|astro|Lium|0\.1\.7[7-9]|Slack|graphify|Makefile|make\.sh|make (test|release|install|build)' <changed files>` — zero hits.
 
 ## 3. Upstream conventions (verified from upstream/main + gh)
 
@@ -261,7 +262,9 @@ Total: 8 PRs, versions 0.1.77–0.1.84 as they land.
 
 **Fork branding:** soultech67 URL rewrites in api/cli/webapp/website/sdks-js/opspec READMEs, `sdks/js/package.json`, `.github/ISSUE_TEMPLATE/config.yml`, website config/sidebars/setup (incl. `ghcr.io/soultech67` refs), `test-suite/README.md`, `test-suite/auth/default/op.yml` + the `__githubAuthTestOpRef__` scenarios.json placeholder.
 
-**Private fork tooling & release plumbing:** `Makefile` + `make.sh` (private `astro` PAT minting, soultech67 defaults, macOS debug targets, install/uninstall backups — no upstream home), `.gitignore` additions, `.opspec/release/check.sh` + `to-ghcr` + `to-github` repointing, all Slack machinery. Exception: `.opspec/release/op.yml`'s +5-line `selfUpdateRepo` input ships in PR 3 with the default flipped to `opctl/opctl`.
+**Make tooling — owner mandate (see §2.2):** `Makefile` + `make.sh` and everything make-associated are excluded from every PR, categorically — the upstream team is against make. This is not merely "private tooling with no upstream home": even the generically useful pieces (version-safe install/uninstall backups, the release branch guard, doctor/debug targets) stay fork-only, and no ported file may carry a `make ...` reference in comments or descriptions (PR 8's port notes already reword the `make test` mentions in op descriptions).
+
+**Private fork tooling & release plumbing:** `.gitignore` additions, `.opspec/release/check.sh` + `to-ghcr` + `to-github` repointing, all Slack machinery, private `astro` PAT minting. Exception: `.opspec/release/op.yml`'s +5-line `selfUpdateRepo` input ships in PR 3 with the default flipped to `opctl/opctl`.
 
 **Fork CHANGELOG content:** all 0.1.77–0.1.81 entries — replaced by one fresh sequential-version entry per PR.
 
