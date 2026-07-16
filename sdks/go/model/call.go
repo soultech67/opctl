@@ -46,7 +46,10 @@ type ContainerCall struct {
 	// format: containerSocket => hostSocket
 	Sockets map[string]string `json:"sockets"`
 	// format: containerPath => named volume
-	Volumes map[string]string `json:"volumes,omitempty"`
+	// no omitempty: an empty map must survive the event store's JSON
+	// round-trip (like dirs/files/sockets), or replayed events differ
+	// in shape from live ones
+	Volumes map[string]string `json:"volumes"`
 	WorkDir string            `json:"workDir"`
 	Name    *string           `json:"name,omitempty"`
 	Ports   map[string]string `json:"ports,omitempty"`

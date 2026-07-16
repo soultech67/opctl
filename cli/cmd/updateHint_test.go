@@ -2,7 +2,10 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -271,5 +274,123 @@ func runnableCommand(name string) *cobra.Command {
 	return &cobra.Command{
 		Use: name,
 		Run: func(cmd *cobra.Command, args []string) {},
+	}
+}
+
+// TestUpdateHintCommandTreeCoverage walks the real CLI command tree and
+// asserts, for every runnable command, whether it gets the update hint:
+// streaming/long-blocking commands must not (the hint would interleave with
+// live output as noise), everything else must (as the final line of output).
+func TestUpdateHintCommandTreeCoverage(t *testing.T) {
+	rootCmd, err := NewRootCmd()
+	if err != nil {
+		t.Fatalf("NewRootCmd() error: %v", err)
+	}
+
+	// expected skips, stated independently of the production skip set
+	skipped := map[string]bool{
+		"opctl run":              true, // streams op output; hint seen mid-log-stream
+		"opctl events":           true, // streams forever
+		"opctl node create":      true, // foreground daemon; blocks
+		"opctl doctor tail-logs": true, // follows the log; blocks
+		"opctl self-update":      true, // replaces the binary; hint is redundant
+	}
+
+	seen := map[string]bool{}
+	var walk func(cmd *cobra.Command)
+	walk = func(cmd *cobra.Command) {
+		if cmd.Runnable() && !cmd.Hidden {
+			path := cmd.CommandPath()
+			seen[path] = true
+
+			got := shouldCheckForUpdateHint(cmd, nil)
+			want := !skipped[path]
+			if got != want {
+				t.Errorf("%s: shouldCheckForUpdateHint = %v, want %v", path, got, want)
+			}
+		}
+		for _, sub := range cmd.Commands() {
+			walk(sub)
+		}
+	}
+	walk(rootCmd)
+
+	// commands this test specifically promises coverage for
+	for _, path := range []string{
+		"opctl auth add",
+		"opctl auth ls",
+		"opctl auth remove",
+		"opctl container delete",
+		"opctl container down",
+		"opctl container ls",
+		"opctl container prune",
+		"opctl doctor log-level",
+		"opctl doctor logs",
+		"opctl doctor tail-logs",
+		"opctl events",
+		"opctl ls",
+		"opctl node container ls",
+		"opctl node create",
+		"opctl node delete",
+		"opctl node kill",
+		"opctl op create",
+		"opctl op install",
+		"opctl op kill",
+		"opctl op validate",
+		"opctl run",
+		"opctl self-update",
+		"opctl ui",
+	} {
+		if !seen[path] {
+			t.Errorf("expected runnable command %q in the CLI tree; command coverage is stale", path)
+		}
+	}
+}
+
+// TestUpdateHintIsEmittedOnceAfterCommandOutput mirrors Execute()'s wiring:
+// the hint is printed only after the executed command has returned, so it is
+// the final line of output — and it appears exactly once.
+func TestUpdateHintIsEmittedOnceAfterCommandOutput(t *testing.T) {
+	out := &bytes.Buffer{}
+
+	rootCmd := &cobra.Command{Use: "opctl"}
+	rootCmd.AddCommand(&cobra.Command{
+		Use: "ls",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Fprintln(out, "command output")
+		},
+	})
+	rootCmd.SetArgs([]string{"ls"})
+
+	executedCmd, err := rootCmd.ExecuteContextC(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	maybePrintUpdateHint(updateHintConfig{
+		args:           []string{"ls"},
+		command:        executedCmd,
+		currentVersion: "0.1.77",
+		dataDir:        t.TempDir(),
+		detectLatestRelease: func(repo string) (semver.Version, bool, error) {
+			return semver.MustParse("0.1.78"), true, nil
+		},
+		now:            func() time.Time { return time.Date(2026, 7, 16, 12, 0, 0, 0, time.UTC) },
+		selfUpdateRepo: "opctl/opctl",
+		warningWriter:  out,
+	})
+
+	lines := strings.Split(strings.TrimRight(out.String(), "\n"), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("expected exactly 2 output lines (command output, then hint), got %d: %q", len(lines), out.String())
+	}
+	if lines[0] != "command output" {
+		t.Errorf("expected command output first, got %q", lines[0])
+	}
+	if want := formatUpdateHint("0.1.78"); lines[1] != want {
+		t.Errorf("expected update hint %q as the final line, got %q", want, lines[1])
+	}
+	if got := strings.Count(out.String(), "is available"); got != 1 {
+		t.Errorf("expected the update hint exactly once, found %d occurrences", got)
 	}
 }

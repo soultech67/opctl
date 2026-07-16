@@ -74,8 +74,32 @@ test: ## Run the test suite. CLI e2e (dind) runs only when RUN_CLI_E2E=true (def
 	 fi; \
 	 opctl run -a githubAccessToken="$$token" -a githubAuthTestOpRef="$(GITHUB_AUTH_TEST_OP_REF)" -a dockerSocket=/var/run/docker.sock -a runCliE2e=$(RUN_CLI_E2E) test
 
-release: ## Run the release op via `opctl run release` (PAT from astro, user from active gh login / soultech67).
+release: ## Run the release op via `opctl run release` (PAT from astro, user from active gh login / soultech67). Warns + prompts when not on main; FORCE=1 skips.
 	@command -v astro >/dev/null || { echo "error: 'astro' not on PATH" >&2; exit 1; }
+	@branch=$$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown); \
+	 if [ "$$branch" != "main" ]; then \
+	   echo "" >&2; \
+	   echo "WARNING: releasing from '$$branch', not 'main'." >&2; \
+	   echo "         The release op builds the working tree as-is (uncommitted changes" >&2; \
+	   echo "         included) and tags the current HEAD commit. Normally you merge the" >&2; \
+	   echo "         PR first and run 'make release' from main." >&2; \
+	   if [ "$(FORCE)" = "1" ]; then \
+	     echo "FORCE=1 set; continuing." >&2; \
+	   elif [ -r /dev/tty ]; then \
+	     printf "Release from '%s' anyway? [y/N]: " "$$branch" >&2; \
+	     read -r answer 2>/dev/null < /dev/tty || answer=""; \
+	     case "$$answer" in \
+	       y | Y | yes | YES) ;; \
+	       *) \
+	         echo "release aborted; merge the PR and release from main (or set FORCE=1 to skip this prompt)" >&2; \
+	         exit 1; \
+	         ;; \
+	     esac; \
+	   else \
+	     echo "release aborted: not on main and no TTY to confirm (set FORCE=1 to override)" >&2; \
+	     exit 1; \
+	   fi; \
+	 fi
 	@USER=$$(gh api user --jq .login 2>/dev/null || echo soultech67); \
 	 TOKEN=$$(astro auth github); \
 	 echo "release as user=$$USER"; \
@@ -110,4 +134,5 @@ help: ## Show this help.
 	@printf "  \033[36m%-23s\033[0m %s\n" "GOARCH"                  "Target arch for install (default: $(GOARCH))"
 	@printf "  \033[36m%-23s\033[0m %s\n" "PREFIX"                  "Install dir override (default: existing opctl, then ~/bin or ~/.local/bin)"
 	@printf "\nThe 'test' and 'release' targets mint a short-lived GitHub PAT via 'astro auth github';\n"
-	@printf "'release' also picks the username from 'gh api user', falling back to 'soultech67'.\n"
+	@printf "'release' also picks the username from 'gh api user', falling back to 'soultech67',\n"
+	@printf "and warns + prompts for confirmation when run from a branch other than main (FORCE=1 skips).\n"

@@ -110,8 +110,22 @@ func getUpdateHint(config updateHintConfig) string {
 	return ""
 }
 
+// updateHintSkippedCommandPaths are commands that stream live output and/or
+// block until interrupted: an update hint would interleave with (or trail) a
+// log stream as noise rather than be read, so these skip the check entirely.
+var updateHintSkippedCommandPaths = map[string]struct{}{
+	"opctl run":              {},
+	"opctl events":           {},
+	"opctl node create":      {},
+	"opctl doctor tail-logs": {},
+}
+
 func shouldCheckForUpdateHint(command *cobra.Command, args []string) bool {
 	if command == nil || !command.Runnable() || command.Name() == "self-update" {
+		return false
+	}
+
+	if _, skipped := updateHintSkippedCommandPaths[command.CommandPath()]; skipped {
 		return false
 	}
 
