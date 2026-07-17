@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file in
 accordance with
 [![keepachangelog 1.0.0](https://img.shields.io/badge/keepachangelog-1.0.0-brightgreen.svg)](http://keepachangelog.com/en/1.0.0/)
 
+## [0.1.82] - 2026-07-16
+
+### Added
+
+- `opctl events --since` gains a `-t` shorthand and accepts day units alongside Go durations and RFC3339 timestamps (e.g. `opctl events -t 3d`,
+  `-t 90m`, `-t 2026-05-31T12:00:00Z`). The default is unchanged: the entire durable history is replayed
+
+### Changed
+
+- `make release` now warns and prompts for confirmation when run from a branch other than `main` (releases should be cut from `main` after
+  the PR merges; the release builds the working tree as-is and tags the current HEAD commit). `FORCE=1` skips the prompt; non-interactive
+  runs without a TTY abort
+
+### Fixed
+
+- The update-available hint is no longer emitted by streaming or long-blocking commands (`opctl run`, `opctl events`, `opctl node create`,
+  `opctl doctor tail-logs`), where it interleaved with live log output as noise; for all other commands it remains the final line of output,
+  after the command's own output
+- Container-call events now serialize the `volumes` property like its `dirs`/`files`/`sockets` siblings (no `omitempty`): an empty volumes
+  map previously vanished in the event store's JSON round-trip, so the same `CallStarted` event had a different shape delivered live vs
+  replayed — surfacing as a race-dependent failure of the `sdks/go/node` serialLoopCaller spec in the nightly e2e (2 consecutive failures
+  on loaded CI runners; a new model round-trip test pins the invariant)
+
 ## [0.1.81] - 2026-07-14
 
 ### Added
